@@ -14,6 +14,7 @@ Added controls in **Auton Coder**:
 - **Customize start** opens the original Singleplayer placement screen for both robots. Switch Robot 1/Robot 2, drag along either red wall, or use the Red 1/Red 2 presets. Save both starts together.
 - Runs open from a raised view behind the red side. The surrounding shed is removed.
 - Choose **Locked view** to keep the mouse free, or **Free cam** to fly around. Change it during a run with the view button or **F**.
+- Each robot tab has **Preload pin: Red up / Yellow up** and **Match-load pin: Color up / Yellow up** controls. These settings are saved independently for each robot and field. Color up uses the red or blue end of the supplied pin; cup orientation is preserved.
 
 Open **Auton Coder** from the main menu. Pick the field, choose which robot to edit, save its routine, then press **Run**. Routines and settings are stored separately in each visitor's browser; they are not shared automatically between visitors. The editor runs simulator commands, not uploaded PROS or VEXcode C++.
 

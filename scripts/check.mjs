@@ -59,4 +59,50 @@ assert.equal(first.runner.i,0,'A long wait must not be cut off by the original s
 assert.equal(second.robot.lift.target,.5,'The second routine must advance independently');
 for(let tick=0;tick<2*60;tick++)first.runner.update(1/60);
 assert.equal(first.robot.lift.target,1,'Skills commands after fifteen seconds must execute');
-console.log('Passed: syntax, Pages resource paths, all field assets, 15/60-second timers, independent runners, and commands after 20 seconds.');
+
+// Exercise the real robot setup and upstream loader, rather than just checking
+// that the orientation buttons store a flag.
+const extension=await readFile(new URL('src/auton-lab.js',root),'utf8');
+const objectEnd=extension.indexOf('\nconst LAB_CSS=');assert(objectEnd>0);
+config.matchLoad={orientation:{match:{cupFlipped:false,pinFlipped:false},skills:{cupFlipped:true,pinFlipped:false}}};
+function setupRobot(){
+  return {
+    root:{position:{x:0,z:0},rotation:{y:0}},
+    reset({startPose}){this.root.position={x:startPose.x,z:startPose.z};this.root.rotation.y=startPose.yaw;},
+    transfer:{loadPreload(pin){this.preload=pin;},matchLoadCapture(){return false;}}
+  };
+}
+const robotA=setupRobot(),robotB=setupRobot();
+const labTest=vm.runInNewContext(extension.slice(0,objectEnd)+';lab',{
+  M:config,mI:'skills',wA:robotA,Ki:[robotB],qI:[],ge:null,
+  qc:()=>({red1:{x:0,z:1.62,yaw:Math.PI},red2:{x:-1.62,z:0,yaw:Math.PI/2}}),
+  lf:()=>({x:-1.62,z:0,yaw:Math.PI/2}),wf:pose=>pose,
+  Wp(){},LD(){},nE:{setRobots(){}},Rg:{addRobot(robot){robot._physBody=true;}},
+  Kg:{remove(){},makeHeldPin(colorA,colorB){return {colorA,colorB};}},
+  Xn:class{setYaw(){}},SI:{},eI:{update(){},updateScore(){}},Br:()=>({}),UI:{clockString:()=>''}
+});
+labTest.config=labTest.defaults();labTest.label=()=>{};
+assert.notEqual(labTest.config.pinOrientations.skills[0],labTest.config.pinOrientations.skills[1]);
+assert.notEqual(labTest.config.pinOrientations.skills[0],labTest.config.pinOrientations.match[0]);
+labTest.config.pinOrientations.skills[0].preloadFlipped=true;
+labTest.config.pinOrientations.skills[1].matchLoadPinFlipped=true;
+labTest.populate();
+assert.equal(robotA.transfer.preload.colorA,'yellow','Robot 1 must receive its yellow-up preload');
+assert.equal(robotB.transfer.preload.colorA,'red','Robot 2 must keep its red-up preload');
+assert.equal(robotA.loadOrientation.pinFlipped,false);
+assert.equal(robotB.loadOrientation.pinFlipped,true);
+assert.equal(robotB.loadOrientation.cupFlipped,true,'Changing a pin must preserve the cup preference');
+const orientationStart=js.indexOf('function mY('),orientationEnd=js.indexOf('function YS(',orientationStart);
+const Loader=vm.runInNewContext(js.slice(orientationStart,orientationEnd)+classSource('vY')+';vY',{M:config});
+const spawned=[];
+const loader={mode:'skills',om:{spawnPiece(options){spawned.push(options);return {};},spawnNestedStack(options){spawned.push(options);return {};}}};
+const station={id:'test',spawn:{x:0,y:0,z:0},inward:{x:1},colorA:'red',colorB:'yellow',rotY:0};
+Loader.prototype._spawn.call(loader,station,robotA,'pin');
+Loader.prototype._spawn.call(loader,station,robotB,'pin');
+Loader.prototype._spawn.call(loader,station,robotB,'stack');
+assert.equal(spawned[0].flip,false);
+assert.equal(spawned[1].flip,true,'The loader must flip Robot 2’s match-load pin');
+assert.equal(spawned[1].scoreFlipped,true,'Pin scoring orientation must match its visible orientation');
+assert.equal(spawned[2].nestedFlip,true,'The pin inside a match-loaded stack must flip too');
+assert.equal(spawned[2].cupMaterialFlip,true);
+console.log('Passed: build, assets, timers, independent runners, long waits, per-robot preloads, and standalone/stacked match-load pin orientations.');

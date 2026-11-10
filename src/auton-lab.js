@@ -13,9 +13,11 @@ const lab = {
   defaults() {
     const starts = qc();
     const skillsStart = wf(lf());
+    const pins=mode=>({preloadFlipped:false,matchLoadPinFlipped:!!M.matchLoad.orientation[mode].pinFlipped});
     return {
       mode: 'match', run: 'both', active: 0, camera: 'locked',
       routines: { match: ['default', 'lab-match-2'], skills: ['lab-skills-1', 'lab-skills-2'] },
+      pinOrientations:{match:[pins('match'),pins('match')],skills:[pins('skills'),pins('skills')]},
       poses: {
         match: [starts.red1, starts.red2],
         skills: [{ ...skillsStart }, { ...starts.red1 }]
@@ -36,6 +38,10 @@ const lab = {
         for (let index = 0; index < 2; index++) {
           const id = stored.routines?.[mode]?.[index];
           if (typeof id === 'string') this.config.routines[mode][index] = id;
+          const pins=stored.pinOrientations?.[mode]?.[index];
+          for(const key of ['preloadFlipped','matchLoadPinFlipped']) {
+            if(typeof pins?.[key]==='boolean')this.config.pinOrientations[mode][index][key]=pins[key];
+          }
           const pose = stored.poses?.[mode]?.[index];
           if (pose && [pose.x,pose.z,pose.yaw].every(Number.isFinite)) {
             const limit = Hn();
@@ -59,6 +65,13 @@ const lab = {
     try { localStorage.setItem(this.key, JSON.stringify(this.config)); } catch {}
   },
   editorPose() { return this.config?.poses[this.mode][this.active] || tE('red'); },
+  pinSettings(mode=this.mode,robot=this.active) {
+    return this.config.pinOrientations[mode][robot];
+  },
+  setPinOrientation(key,flipped) {
+    this.pinSettings()[key]=flipped;
+    this.save();this.prepare();tp();this.mountControls();rC();
+  },
   syncStartInputs() {
     const pose=this.editorPose();
     for(const input of document.querySelectorAll('#lab-options [data-start-axis]')) {
@@ -320,13 +333,18 @@ const lab = {
       if (!robot._physBody) Rg.addRobot(robot);
       robot.root.visible = true;
       robot.reset({ mode:mI, alliance:'red', startPose:this.config.poses[mI][slot] });
+      const pins=this.pinSettings(mI,slot);
+      const preloadColors=pins.preloadFlipped?['yellow','red']:['red','yellow'];
+      // The existing loader reads this from the robot entering its trigger.
+      // Copy the cup preference while giving this robot its own pin preference.
+      robot.loadOrientation={...M.matchLoad.orientation[mI],pinFlipped:pins.matchLoadPinFlipped};
       // Reset the primary preload reference too, so every run starts identically.
       if (index === 0) {
         if (ge) { Kg.remove(ge); ge=null; }
-        ge = Kg.makeHeldPin('red','yellow');
+        ge = Kg.makeHeldPin(...preloadColors);
         robot.transfer.loadPreload(ge);
       } else {
-        robot.transfer.loadPreload(Kg.makeHeldPin('red','yellow'));
+        robot.transfer.loadPreload(Kg.makeHeldPin(...preloadColors));
       }
       if (!robot._dummy) robot._dummy = new Xn();
       robot._dummy.setYaw(robot.root.rotation.y);
@@ -432,6 +450,14 @@ const lab = {
       wrap.append(input);start.append(wrap);
     }
     button(start,'Reset start',false,()=>{this.config.poses[this.mode][this.active]={...this.defaults().poses[this.mode][this.active]};this.save();this.prepare();tp();this.mountControls();rC();});
+    const pins=this.pinSettings();
+    const preload=group('PRELOAD PIN');preload.id='lab-preload-orientation';
+    button(preload,'Red up',!pins.preloadFlipped,()=>this.setPinOrientation('preloadFlipped',false));
+    button(preload,'Yellow up',pins.preloadFlipped,()=>this.setPinOrientation('preloadFlipped',true));
+    const loads=group('MATCH-LOAD PIN');loads.id='lab-load-pin-orientation';
+    const colorUp=button(loads,'Color up',!pins.matchLoadPinFlipped,()=>this.setPinOrientation('matchLoadPinFlipped',false));
+    colorUp.title='Red or blue end up, depending on the match-load pin color';
+    button(loads,'Yellow up',pins.matchLoadPinFlipped,()=>this.setPinOrientation('matchLoadPinFlipped',true));
     Y.panel.insertBefore(bar,Y.panel.querySelector('.auton-body'));
     Y.panel.querySelector('.lab-run')?.remove();
     const test=tI('button','auton-btn good lab-run',`▶ RUN ${this.duration} SEC`);
