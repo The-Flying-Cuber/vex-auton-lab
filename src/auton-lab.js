@@ -5,6 +5,7 @@ const lab = {
   mode: 'match',
   run: 'both',
   active: 0,
+  camera: 'locked',
   testing: false,
   config: null,
   slots: [0, 1],
@@ -13,11 +14,11 @@ const lab = {
     const starts = qc();
     const skillsStart = wf(lf());
     return {
-      mode: 'match', run: 'both', active: 0,
+      mode: 'match', run: 'both', active: 0, camera: 'locked',
       routines: { match: ['default', 'lab-match-2'], skills: ['lab-skills-1', 'lab-skills-2'] },
       poses: {
         match: [starts.red1, starts.red2],
-        skills: [{ ...skillsStart, z: .45 }, { ...skillsStart, z: -.45 }]
+        skills: [{ ...skillsStart }, { ...starts.red1 }]
       }
     };
   },
@@ -30,6 +31,7 @@ const lab = {
       if (['match','skills'].includes(stored.mode)) this.config.mode = stored.mode;
       if (['1','2','both'].includes(stored.run)) this.config.run = stored.run;
       this.config.active = stored.active === 1 ? 1 : 0;
+      if (['locked','free'].includes(stored.camera)) this.config.camera=stored.camera;
       for (const mode of ['match','skills']) {
         for (let index = 0; index < 2; index++) {
           const id = stored.routines?.[mode]?.[index];
@@ -45,6 +47,7 @@ const lab = {
     this.mode = this.config.mode;
     this.run = this.config.run;
     this.active = this.config.active;
+    this.camera = this.config.camera;
     const store = Zy();
     for (const mode of ['match','skills']) {
       for (let index = 0; index < 2; index++) {
@@ -63,10 +66,149 @@ const lab = {
   },
   save() {
     if (!this.config) return;
-    Object.assign(this.config, { mode:this.mode, run:this.run, active:this.active });
+    Object.assign(this.config, { mode:this.mode, run:this.run, active:this.active, camera:this.camera });
     try { localStorage.setItem(this.key, JSON.stringify(this.config)); } catch {}
   },
   editorPose() { return this.config?.poses[this.mode][this.active] || tE('red'); },
+  syncStartInputs() {
+    const pose=this.editorPose();
+    for(const input of document.querySelectorAll('#lab-options [data-start-axis]')) {
+      const axis=input.dataset.startAxis;
+      input.value=String(VC(axis==='yaw'?pose.yaw*180/Math.PI:pose[axis]));
+    }
+  },
+  clampRedStart(pose) {
+    const limit=Hn();
+    // The red alliance has two adjacent starting walls, one per red quadrant.
+    return Math.abs(pose.x+limit)<Math.abs(pose.z-limit)
+      ? {x:-limit,z:us(pose.z,-limit,limit),yaw:pose.yaw}
+      : {x:us(pose.x,-limit,limit),z:limit,yaw:pose.yaw};
+  },
+  openStartEditor() {
+    if(this.startEditing||!Y.open)return;
+    const panel=document.getElementById('spPanel');
+    const state={
+      poses:this.config.poses[this.mode].map(pose=>({...pose})),
+      active:this.active,
+      previousState:iI,
+      previousOverlay:Object.keys(rA.overlays).find(key=>!rA.overlays[key].classList.contains('hidden'))||'home',
+      getRobot:EB.getRobot,lockWall:EB.lockWall,clampFn:EB.clampFn,onChange:EB.onChange,
+      rootDisplay:Y.root.style.display,
+      heading:panel.querySelector('h2').textContent,
+      instruction:panel.querySelector('.sp-instr').innerHTML,
+      presetDisplay:document.getElementById('spPresets').style.display,
+      presetLabelDisplay:document.getElementById('spPresetsLbl').style.display,
+      saveOnceDisplay:document.getElementById('spSaveOnce').style.display,
+      saveAlwaysText:document.getElementById('spSaveAlways').textContent
+    };
+    this.startEditing=state;
+    const run=this.run;this.run='both';this.prepare();this.run=run;
+    state.robots=qI.slice();
+    EB.getRobot=()=>state.robots[state.active];EB.lockWall=null;EB.drag=null;
+    EB.clampFn=pose=>this.clampRedStart(pose);
+    EB.onChange=pose=>{state.poses[state.active]={...pose};this.updateStartEditor();};
+    for(let index=0;index<2;index++){
+      state.robots[index].root.position.set(state.poses[index].x,0,state.poses[index].z);
+      state.robots[index].root.rotation.y=state.poses[index].yaw;
+      Rg.updateRobot(state.robots[index]);
+    }
+    const robots=tI('div','sp-presets');robots.id='lab-start-robots';
+    for(let index=0;index<2;index++){
+      const button=tI('button','sp-preset',`Robot ${index+1}`);button.dataset.robot=String(index);
+      button.onclick=()=>{state.active=index;this.updateStartEditor();};robots.append(button);
+    }
+    panel.querySelector('.sp-instr').insertAdjacentElement('afterend',robots);
+    const status=tI('p','sp-instr');status.id='lab-start-status';robots.insertAdjacentElement('afterend',status);
+    panel.querySelector('.sp-instr').innerHTML='Drag the robot along either red wall to move it.<br>Drag the handle to rotate it.';
+    document.getElementById('spPresets').style.display='';document.getElementById('spPresetsLbl').style.display='';
+    panel.querySelectorAll('[data-team]').forEach(button=>{button.style.display=button.dataset.team.startsWith('red')?'':'none';});
+    document.getElementById('spSaveOnce').style.display='none';
+    document.getElementById('spSaveAlways').textContent='Save starts';
+    Y.root.style.display='none';iI=WA.MATCH_CONFIG;rA.show('startPos');wB(false);
+    this.updateStartEditor();EB.open();
+  },
+  updateStartEditor() {
+    const state=this.startEditing;if(!state)return;
+    document.querySelector('#spPanel h2').textContent=`Robot ${state.active+1} Starting Position`;
+    document.querySelectorAll('#lab-start-robots button').forEach(button=>button.classList.toggle('lab-start-selected',Number(button.dataset.robot)===state.active));
+    const sameQuadrant=(Math.abs(state.poses[0].x+Hn())<.01)===(Math.abs(state.poses[1].x+Hn())<.01);
+    document.getElementById('lab-start-status').textContent=this.mode==='skills'
+      ? sameQuadrant?'For VEXU Skills, use separate red quadrants. Red 1 and Red 2 are available below.':'Both robots are in separate red starting quadrants.'
+      : 'Set each robot independently with Red 1 and Red 2.';
+  },
+  startPreset(name) {
+    const pose=qc()[name];if(!pose||!name.startsWith('red'))return;
+    EB.setPose(pose);this.startEditing.poses[this.startEditing.active]={...pose};this.updateStartEditor();
+  },
+  closeStartEditor(save) {
+    const state=this.startEditing;if(!state)return;
+    EB.drag=null;EB.close();
+    if(save)this.config.poses[this.mode]=state.poses.map(pose=>({...pose}));
+    EB.getRobot=state.getRobot;EB.lockWall=state.lockWall;EB.clampFn=state.clampFn;EB.onChange=state.onChange;
+    this.startEditing=null;
+    const panel=document.getElementById('spPanel');panel.querySelector('h2').textContent=state.heading;
+    panel.querySelector('.sp-instr').innerHTML=state.instruction;
+    document.getElementById('lab-start-robots').remove();document.getElementById('lab-start-status').remove();
+    panel.querySelectorAll('[data-team]').forEach(button=>button.style.display='');
+    document.getElementById('spPresets').style.display=state.presetDisplay;
+    document.getElementById('spPresetsLbl').style.display=state.presetLabelDisplay;
+    document.getElementById('spSaveOnce').style.display=state.saveOnceDisplay;
+    document.getElementById('spSaveAlways').textContent=state.saveAlwaysText;
+    iI=state.previousState;rA.show(state.previousOverlay);Y.root.style.display=state.rootDisplay;
+    this.save();this.prepare();tp();this.mountControls();rC();Bg();
+  },
+  bindStartDrag() {
+    const canvas=Y.canvas;
+    if(!canvas||canvas.dataset.labStartDrag)return;
+    canvas.dataset.labStartDrag='1';
+    canvas.setAttribute('aria-label','Auton field. Drag the numbered start node to move it, or its small direction handle to turn it.');
+    canvas.title='Drag the numbered start node to move. Drag its small handle to turn.';
+    const hit=(event)=>{
+      const rect=canvas.getBoundingClientRect(),pose=this.editorPose();
+      const x=(Pg-pose.x)/(2*Pg)*rect.width+rect.left;
+      const y=(Pg-pose.z)/(2*Pg)*rect.height+rect.top;
+      const length=26*rect.width/ja;
+      const rotate=Math.hypot(event.clientX-(x-Math.sin(pose.yaw)*length),event.clientY-(y-Math.cos(pose.yaw)*length))<10;
+      return {x,y,rotate,move:Math.hypot(event.clientX-x,event.clientY-y)<13};
+    };
+    let drag=null;
+    canvas.addEventListener('pointerdown',event=>{
+      if(event.button!==0||Y.pickGoalFor>=0)return;
+      const target=hit(event);
+      if(!target.rotate&&!target.move)return;
+      event.preventDefault();event.stopImmediatePropagation();
+      drag={id:event.pointerId,rotate:target.rotate,original:{...this.editorPose()}};
+      canvas.setPointerCapture(event.pointerId);canvas.style.cursor='grabbing';
+    },true);
+    canvas.addEventListener('pointermove',event=>{
+      if(!drag||event.pointerId!==drag.id)return;
+      event.preventDefault();event.stopImmediatePropagation();
+      const pose=this.editorPose();
+      if(drag.rotate){
+        const center=hit(event);
+        if(Math.hypot(event.clientX-center.x,event.clientY-center.y)>5)pose.yaw=Wt(Math.atan2(center.x-event.clientX,center.y-event.clientY));
+      }else{
+        const point=Wy(event.clientX,event.clientY),limit=Hn();
+        pose.x=VC(us(point.x,-limit,limit));pose.z=VC(us(point.z,-limit,limit));
+      }
+      this.syncStartInputs();oE();
+    },true);
+    const finish=(event,cancel=false)=>{
+      if(!drag||event.pointerId!==drag.id)return;
+      event.preventDefault();event.stopImmediatePropagation();
+      if(cancel)Object.assign(this.editorPose(),drag.original);
+      drag=null;
+      if(canvas.hasPointerCapture(event.pointerId))canvas.releasePointerCapture(event.pointerId);
+      canvas.style.cursor='grab';this.save();this.prepare();tp();rC();this.syncStartInputs();
+    };
+    canvas.addEventListener('pointerup',event=>finish(event),true);
+    canvas.addEventListener('pointercancel',event=>finish(event,true),true);
+    canvas.addEventListener('pointermove',event=>{
+      if(drag||Y.dragWaypoint>=0||Y.pickGoalFor>=0)return;
+      const target=hit(event);
+      if(target.move||target.rotate)canvas.style.cursor='grab';
+    });
+  },
   steps(index) {
     const store = Y.open && Y.store ? Y.store : Zy();
     const id = this.config.routines[this.mode][index];
@@ -192,6 +334,13 @@ const lab = {
     context.textAlign='center'; context.textBaseline='middle'; context.fillText(String(other+1),toX(pose.x),toZ(pose.z));
     const own=this.editorPose();
     context.globalAlpha=1; context.fillStyle=this.active===0?'#7fdcff':'#ffb068';
+    // A second handle edits heading without adding an auton command.
+    const centerX=toX(own.x),centerY=toZ(own.z);
+    const directionX=-Math.sin(own.yaw),directionY=-Math.cos(own.yaw);
+    const handleX=centerX+directionX*26*dpr,handleY=centerY+directionY*26*dpr;
+    context.strokeStyle=context.fillStyle;context.lineWidth=2*dpr;
+    context.beginPath();context.moveTo(centerX+directionX*9*dpr,centerY+directionY*9*dpr);context.lineTo(handleX,handleY);context.stroke();
+    context.beginPath();context.arc(handleX,handleY,5*dpr,0,Math.PI*2);context.fill();
     context.beginPath(); context.arc(toX(own.x),toZ(own.z),8*dpr,0,Math.PI*2); context.fill();
     context.fillStyle='#04101f'; context.fillText(String(this.active+1),toX(own.x),toZ(own.z));
     context.restore();
@@ -214,12 +363,17 @@ const lab = {
     const editing=group('EDITING');
     button(editing,'Edit Robot 1',this.active===0,()=>this.switchTo(()=>{this.active=0;}));
     button(editing,'Edit Robot 2',this.active===1,()=>this.switchTo(()=>{this.active=1;}));
+    const camera=group('VIEW');
+    button(camera,'Locked view',this.camera==='locked',()=>{this.setCamera('locked');this.mountControls();});
+    button(camera,'Free cam',this.camera==='free',()=>{this.setCamera('free');this.mountControls();});
     const start=group('START');
+    button(start,'Customize start',false,()=>this.openStartEditor());
     const pose=this.editorPose();
     for (const [key,label,value] of [['x','X (m)',pose.x],['z','Z (m)',pose.z],['yaw','Heading (°)',pose.yaw*180/Math.PI]]) {
       const wrap=document.createElement('label');wrap.className='lab-pose-label';wrap.textContent=label;
       const input=document.createElement('input');input.type='number';input.className='auton-in';input.value=String(Math.round(value*100)/100);
       input.step=key==='yaw'?'5':'.05';input.setAttribute('aria-label',`Robot ${this.active+1} start ${label}`);
+      input.dataset.startAxis=key;
       input.onchange=()=>{if(!Number.isFinite(input.valueAsNumber))return;const limit=Hn();pose[key]=key==='yaw'?Wt(input.valueAsNumber*Math.PI/180):us(input.valueAsNumber,-limit,limit);this.save();this.prepare();tp();rC();};
       wrap.append(input);start.append(wrap);
     }
@@ -230,7 +384,7 @@ const lab = {
     test.onclick=()=>{
       kD();Y.store.selectedId=Y.editingId;Wa(Y.store);this.remember();
       op();this.testing=true;M.controls.matchAuton=true;
-      mD(this.mode);if(this.run==='both'){ig=true;Lg.frameArena();}this.showRunBar();
+      mD(this.mode);this.showRunBar();
     };
     Y.panel.querySelector('.auton-foot').append(test);
     const title=Y.panel.querySelector('.auton-title');
@@ -238,18 +392,48 @@ const lab = {
     Y.panel.querySelectorAll('.auton-foot button:not(.lab-run)').forEach(el=>{
       if(!el.dataset.labRemember){el.dataset.labRemember='1';el.addEventListener('click',()=>this.remember());}
     });
+    this.bindStartDrag();
+  },
+  redSideView() {
+    if(this.originalFov==null)this.originalFov=xg.fov;
+    xg.fov=42;xg.updateProjectionMatrix();
+    Lg.pos.set(0,2.9,3.55);
+    Lg.yaw=0;Lg.pitch=Math.atan2(.1-2.9,3.2);Lg.speed=M.spectator.speed;
+    Lg.update(0,lA,true);
+    this.applyCamera(false);
+  },
+  restoreCameraFov() {
+    if(this.originalFov==null)return;
+    xg.fov=this.originalFov;xg.updateProjectionMatrix();this.originalFov=null;
+  },
+  setCamera(mode) {
+    this.camera=mode==='free'?'free':'locked';this.save();
+    this.applyCamera();
+  },
+  applyCamera(capture=true) {
+    if(this.testing){
+      Vi=false;ig=this.camera==='free';$C=!ig;
+      if(ig){if(capture)lA.requestLock();}
+      else lA.exitLock();
+    }
+    const button=document.getElementById('lab-camera-toggle');
+    if(button)button.textContent=this.camera==='free'?'View: Free cam · F':'View: Locked · F';
   },
   showRunBar() {
     let bar=document.getElementById('lab-runbar');
     if (!bar) {
       bar=tI('div');bar.id='lab-runbar';
       const back=tI('button','auton-btn','← Edit auton');back.onclick=()=>this.returnToEditor();
+      const camera=tI('button','auton-btn');camera.id='lab-camera-toggle';
+      camera.title='Click or press F to switch between locked view and free camera';
+      camera.onclick=()=>this.setCamera(this.camera==='free'?'locked':'free');
       const text=tI('span');text.id='lab-run-summary';
       const progress=tI('span');progress.id='lab-run-progress';progress.setAttribute('aria-live','off');
-      bar.append(back,text,progress);document.body.append(bar);
+      bar.append(back,camera,text,progress);document.body.append(bar);
     }
     document.getElementById('lab-run-summary').textContent=`${this.mode==='skills'?'Skills · 60 sec':'Match · 15 sec'} · ${this.run==='both'?'2 robots':`Robot ${this.run}`}`;
     bar.hidden=false;
+    this.applyCamera(false);
     this.updateProgress();
   },
   updateProgress() {
@@ -282,6 +466,32 @@ const lab = {
     const version=document.getElementById('homeVersion');version.textContent+=' · Auton Lab';
     version.title='Unofficial extension of RoboSTEM Vsimulator';
     const style=document.createElement('style');style.textContent=LAB_CSS;document.head.append(style);
+    const lockChanged=lA.onLockChange;
+    lA.onLockChange=(...args)=>{if(this.testing&&this.camera==='locked')return;lockChanged(...args);};
+    const lockError=lA.onLockError;
+    lA.onLockError=(...args)=>{if(this.testing&&this.camera==='locked')return;lockError(...args);};
+    window.addEventListener('keydown',event=>{
+      if(this.startEditing&&event.code==='Escape'){
+        event.preventDefault();event.stopImmediatePropagation();this.closeStartEditor(false);return;
+      }
+      if(event.code!=='KeyF'||event.repeat||!this.testing||iI!==WA.PLAYING||GB.isOpen())return;
+      if(event.target instanceof Element&&event.target.closest('input,textarea,[contenteditable="true"]'))return;
+      event.preventDefault();event.stopImmediatePropagation();
+      this.setCamera(this.camera==='free'?'locked':'free');
+    },true);
+    for(const key of ['onSpPreset','onSpSave','onSpReset','onSpCancel']){
+      const original=rA.cb[key];
+      rA.cb[key]=(...args)=>{
+        if(!this.startEditing)return original(...args);
+        if(key==='onSpPreset')this.startPreset(args[0]);
+        else if(key==='onSpSave')this.closeStartEditor(true);
+        else if(key==='onSpCancel')this.closeStartEditor(false);
+        else{
+          const index=this.startEditing.active,pose=this.defaults().poses[this.mode][index];
+          EB.setPose(pose);this.startEditing.poses[index]={...pose};this.updateStartEditor();
+        }
+      };
+    }
     this.selectRoutine();
     // A direct link opens the same editor; all original singleplayer menus stay.
     if (new URLSearchParams(location.search).get('auton')==='1') GB.open();
@@ -294,6 +504,7 @@ const LAB_CSS=`
  .lab-label{font-size:10px;font-weight:800;letter-spacing:.12em;color:#9fb2d2;margin-right:4px}
  .lab-pose-label{font-size:10px;color:#9fb2d2;display:flex;align-items:center;gap:4px}
  .lab-pose-label input{width:65px!important}
+ #lab-start-robots .lab-start-selected{background:#37a0ff;color:#04101f;border-color:#37a0ff}
  .auton-title small{display:block;font-size:9px;letter-spacing:.08em;margin-top:5px;color:#7fdcff;white-space:nowrap}
  .auton-foot .lab-run{margin-left:auto;white-space:nowrap}
  #lab-runbar{position:fixed;z-index:1200;right:18px;top:76px;display:flex;align-items:center;gap:10px;font:600 12px var(--ui-font);color:#e8edf5;background:rgba(12,16,24,.8);padding:8px 12px;border-radius:10px;backdrop-filter:blur(4px)}
@@ -305,6 +516,7 @@ const LAB_CSS=`
 
 lab.load();
 M.scoring.robotAlliance='red';
+M.arena.warehouse.enabled=false;
 vg='override';
 // The fork has no account server. Keep all routines and settings in this origin.
 re=async()=>{go=false;dI=null;rA.setAuthEnabled(false);};
@@ -315,16 +527,21 @@ PH=function(duration,autonDuration=0){
   lab.populate();
 };
 ZH=()=>lab.startRunners();
+const labOriginalMD=mD;
+mD=function(mode){labOriginalMD(mode);if(lab.testing)lab.redSideView();};
+const labRequestLock=lA.requestLock.bind(lA);
+lA.requestLock=function(){if(lab.testing&&lab.camera==='locked')return;return labRequestLock();};
 const labOriginalOpen=GB.open.bind(GB);
 GB.open=function(onClose){
   if(Y.open)return;
+  lab.restoreCameraFov();
   lab.prepare();lab.selectRoutine();
   document.getElementById('lab-runbar')?.setAttribute('hidden','');
   labOriginalOpen(()=>{lab.remember();if(typeof onClose==='function')onClose();});
   lab.mountControls();rC();
 };
 const labOriginalTT=tt;
-tt=function(){lab.testing=false;document.getElementById('lab-runbar')?.setAttribute('hidden','');labOriginalTT();};
+tt=function(){lab.testing=false;lab.restoreCameraFov();document.getElementById('lab-runbar')?.setAttribute('hidden','');labOriginalTT();};
 window.autonLab=lab;
 ox().then(()=>lab.afterBoot()).catch(error=>{
   console.error('Auton Lab failed to start',error);
