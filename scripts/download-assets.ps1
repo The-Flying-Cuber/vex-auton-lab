@@ -1,9 +1,9 @@
 $ErrorActionPreference = 'Stop'
 $projectDir = Split-Path -Parent $PSScriptRoot
-$distDir = Join-Path $projectDir 'dist'
+$distDir = Join-Path $projectDir 'vendor/site'
 $origin = 'https://sim.robostem.org'
 $paths = [Collections.Generic.HashSet[string]]::new()
-foreach ($path in @('/asset-manifest.json', '/assets/modulepreload-polyfill-B5Qt9EMX.js', '/models/pin.glb', '/models/cup.glb', '/models/goal_tall.glb', '/models/goal_neutral.glb', '/models/goal_alliance.glb', '/models/matchloader.glb', '/models/Large_Warehouse/Large_Warehouse.gltf', '/sounds/cat-meow.mp3')) { [void]$paths.Add($path) }
+foreach ($path in @('/asset-manifest.json', '/assets/modulepreload-polyfill-B5Qt9EMX.js', '/models/pin.glb', '/models/cup.glb', '/models/goal_tall.glb', '/models/goal_neutral.glb', '/models/goal_alliance.glb', '/models/matchloader.glb', '/models/Large_Warehouse/Large_Warehouse.gltf', '/sounds/cat-meow.mp3', '/images/logo-ui.png', '/images/override.png')) { [void]$paths.Add($path) }
 $html = [IO.File]::ReadAllText((Join-Path $projectDir 'vendor/index.html'))
 foreach ($match in [regex]::Matches($html, '(?:src|href)=["''](/images/[^"'']+)["'']')) { [void]$paths.Add($match.Groups[1].Value) }
 $queue = [Collections.Generic.Queue[string]]::new()

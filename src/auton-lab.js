@@ -235,7 +235,9 @@ const lab = {
     Y.panel.querySelector('.auton-foot').append(test);
     const title=Y.panel.querySelector('.auton-title');
     title.innerHTML=`AUTON<em>CODER</em><small>${this.mode==='skills'?'SKILLS':'MATCH'} · ROBOT ${this.active+1}</small>`;
-    Y.panel.querySelectorAll('.auton-foot button:not(.lab-run)').forEach(el=>el.addEventListener('click',()=>this.remember()));
+    Y.panel.querySelectorAll('.auton-foot button:not(.lab-run)').forEach(el=>{
+      if(!el.dataset.labRemember){el.dataset.labRemember='1';el.addEventListener('click',()=>this.remember());}
+    });
   },
   showRunBar() {
     let bar=document.getElementById('lab-runbar');
