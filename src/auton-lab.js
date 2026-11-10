@@ -398,7 +398,10 @@ const lab = {
     context.fillStyle=context.strokeStyle;
     context.lineWidth=2*dpr; context.setLineDash([4*dpr,4*dpr]);
     context.beginPath(); context.moveTo(toX(pose.x),toZ(pose.z));
-    for (const step of this.steps(other)) if (step.t==='driveTo') context.lineTo(toX(step.x),toZ(step.z));
+    for (const step of this.steps(other)) {
+      if(step.t==='driveTo'||step.t==='curveTo')labCurves.trace(context,toX,toZ,step);
+      else if(step.t==='score'&&step.gx!=null)context.lineTo(toX(step.gx),toZ(step.gz));
+    }
     context.stroke(); context.setLineDash([]);
     context.beginPath(); context.arc(toX(pose.x),toZ(pose.z),8*dpr,0,Math.PI*2); context.fill();
     context.fillStyle='#04101f'; context.font=`800 ${10*dpr}px sans-serif`;
@@ -527,9 +530,10 @@ const lab = {
       const runner=robot._autonRunner;
       return `R${this.slots[index]+1}: ${runner&&!runner.done?`${runner.i+1}/${runner.steps.length}`:'done'}`;
     }).join(' · ');
+    progress.title=qI.map((robot,index)=>`Robot ${this.slots[index]+1}: ${robot.transfer.hasPin?'pin':'no pin'}, ${robot.transfer.hasCup?'cup':'no cup'} · ${robot.transfer.state}`).join('\n');
     progress.dataset.remaining=String(UI.timeLeft);
     progress.dataset.running=String(UI.running);
-    progress.dataset.robots=JSON.stringify(qI.map((robot,index)=>({slot:this.slots[index]+1,x:robot.root.position.x,z:robot.root.position.z,step:robot._autonRunner?.i??-1,done:robot._autonRunner?.done??true})));
+    progress.dataset.robots=JSON.stringify(qI.map((robot,index)=>({slot:this.slots[index]+1,x:robot.root.position.x,z:robot.root.position.z,step:robot._autonRunner?.i??-1,done:robot._autonRunner?.done??true,hasPin:!!robot.transfer.hasPin,hasCup:!!robot.transfer.hasCup,transfer:robot.transfer.state})));
   },
   returnToEditor() {
     bg();lA.exitLock();rB();this.testing=false;iI=WA.HOME;rA.show('home');Bg();
@@ -548,7 +552,7 @@ const lab = {
     const open=tI('button','item','Auton Coder');open.id='homeAutonLab';open.onclick=()=>GB.open();home.insertAdjacentElement('afterend',open);
     const version=document.getElementById('homeVersion');version.textContent+=' · Auton Lab';
     version.title='Unofficial extension of RoboSTEM Vsimulator';
-    const style=document.createElement('style');style.textContent=LAB_CSS;document.head.append(style);
+    const style=document.createElement('style');style.textContent=LAB_CSS+LAB_CURVE_CSS;document.head.append(style);
     const lockChanged=lA.onLockChange;
     lA.onLockChange=(...args)=>{if(this.testing&&this.camera==='locked')return;lockChanged(...args);};
     const lockError=lA.onLockError;
