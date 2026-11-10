@@ -329,6 +329,7 @@ const lab = {
       const robot = qI[index];
       const slot = this.slots[index];
       robot._autonRunner = null;
+      robot._labPeakSpeed=0;
       robot.activeMode = mI;
       if (!robot._physBody) Rg.addRobot(robot);
       robot.root.visible = true;
@@ -387,6 +388,30 @@ const lab = {
       runner._s0x=runner._s1x; runner._s0z=runner._s1z;
       runner._c=1; runner._s=0; runner._dyaw=0;
     }
+  },
+  addLoaderTarget(id) {
+    const loader=Ao?.loaders.find(station=>station.id===id&&station.alliance==='red');
+    if(!Y.open||!loader)return;
+    const limit=Hn();vi();
+    Y.steps.push({t:'driveTo',x:VC(us(loader.trigger.x,-limit,limit)),z:VC(us(loader.trigger.z,-limit,limit)),...Y.rev?{rev:true}:{}},{t:'intake',ms:1000});
+    Y.selected=Y.steps.length-2;Y.pickGoalFor=-1;rC();
+  },
+  drawLoaderZones(context,dpr,size,toX,toZ) {
+    context.save();
+    for(const loader of (Ao?.loaders||[])) {
+      if(loader.alliance!=='red')continue;
+      const {triggerHalfWidth:width,triggerHalfDepth:depth}=M.matchLoad;
+      const left=Math.min(toX(loader.trigger.x-width),toX(loader.trigger.x+width));
+      const top=Math.min(toZ(loader.trigger.z-depth),toZ(loader.trigger.z+depth));
+      const w=Math.abs(toX(loader.trigger.x-width)-toX(loader.trigger.x+width));
+      const h=Math.abs(toZ(loader.trigger.z-depth)-toZ(loader.trigger.z+depth));
+      context.fillStyle='rgba(255,90,90,.12)';context.fillRect(left,top,w,h);
+      context.strokeStyle='#ff8c85';context.lineWidth=1.4*dpr;context.setLineDash([3*dpr,2*dpr]);context.strokeRect(left,top,w,h);context.setLineDash([]);
+      context.fillStyle='#ffb2aa';context.beginPath();context.arc(toX(loader.trigger.x),toZ(loader.trigger.z),7*dpr,0,Math.PI*2);context.fill();
+      context.fillStyle='#30100b';context.font=`800 ${9*dpr}px sans-serif`;context.textAlign='center';context.textBaseline='middle';
+      context.fillText(loader.id==='red-near'?'A':'B',toX(loader.trigger.x),toZ(loader.trigger.z));
+    }
+    context.restore();
   },
   drawOtherRobot(context, dpr, size, toX, toZ) {
     if (!this.config) return;
@@ -461,6 +486,11 @@ const lab = {
     const colorUp=button(loads,'Color up',!pins.matchLoadPinFlipped,()=>this.setPinOrientation('matchLoadPinFlipped',false));
     colorUp.title='Red or blue end up, depending on the match-load pin color';
     button(loads,'Yellow up',pins.matchLoadPinFlipped,()=>this.setPinOrientation('matchLoadPinFlipped',true));
+    const loaders=group('LOADERS (3D)');
+    loaders.title='Add an exact red-loader DRIVE target and a one-second INTAKE block. Top/bottom refer to the red-side 3D run view.';
+    for(const [id,label] of [['red-near','Top-left A'],['red-far','Bottom-left B']]) {
+      const load=tI('button','auton-revmini',label);load.type='button';load.id='lab-load-'+id;load.onclick=()=>this.addLoaderTarget(id);loaders.append(load);
+    }
     Y.panel.insertBefore(bar,Y.panel.querySelector('.auton-body'));
     Y.panel.querySelector('.lab-run')?.remove();
     const test=tI('button','auton-btn good lab-run',`▶ RUN ${this.duration} SEC`);
@@ -530,10 +560,11 @@ const lab = {
       const runner=robot._autonRunner;
       return `R${this.slots[index]+1}: ${runner&&!runner.done?`${runner.i+1}/${runner.steps.length}`:'done'}`;
     }).join(' · ');
-    progress.title=qI.map((robot,index)=>`Robot ${this.slots[index]+1}: ${robot.transfer.hasPin?'pin':'no pin'}, ${robot.transfer.hasCup?'cup':'no cup'} · ${robot.transfer.state}`).join('\n');
+    for(const robot of qI)robot._labPeakSpeed=Math.max(robot._labPeakSpeed||0,Math.abs(robot.drivetrain?.speed||0));
+    progress.title=qI.map((robot,index)=>`Robot ${this.slots[index]+1}: ${robot.transfer.hasPin?'pin':'no pin'}, ${robot.transfer.hasCup?'cup':'no cup'} · ${robot.transfer.state} · peak ${(robot._labPeakSpeed||0).toFixed(2)} m/s`).join('\n');
     progress.dataset.remaining=String(UI.timeLeft);
     progress.dataset.running=String(UI.running);
-    progress.dataset.robots=JSON.stringify(qI.map((robot,index)=>({slot:this.slots[index]+1,x:robot.root.position.x,z:robot.root.position.z,step:robot._autonRunner?.i??-1,done:robot._autonRunner?.done??true,hasPin:!!robot.transfer.hasPin,hasCup:!!robot.transfer.hasCup,transfer:robot.transfer.state})));
+    progress.dataset.robots=JSON.stringify(qI.map((robot,index)=>({slot:this.slots[index]+1,x:robot.root.position.x,z:robot.root.position.z,step:robot._autonRunner?.i??-1,done:robot._autonRunner?.done??true,hasPin:!!robot.transfer.hasPin,hasCup:!!robot.transfer.hasCup,transfer:robot.transfer.state,speed:Math.abs(robot.drivetrain?.speed||0),peakSpeed:robot._labPeakSpeed||0})));
   },
   returnToEditor() {
     bg();lA.exitLock();rB();this.testing=false;iI=WA.HOME;rA.show('home');Bg();

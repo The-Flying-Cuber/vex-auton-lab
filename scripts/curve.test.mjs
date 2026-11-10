@@ -50,7 +50,7 @@ function simulation(steps,{start={x:0,z:0},yaw=0}={}) {
   runner._s0x=runner._s1x;runner._s0z=runner._s1z;runner._c=1;runner._s=0;runner._dyaw=0;
   return {robot,dummy,runner,elapsed:0,trace:[],tick(){
     runner.update(1/60);Robot.prototype.update.call(robot,1/60,dummy.input,dummy.view,true);
-    this.elapsed+=1/60;this.trace.push({x:robot.root.position.x,z:robot.root.position.z});
+    this.elapsed+=1/60;this.trace.push({x:robot.root.position.x,z:robot.root.position.z,speed:Math.abs(robot.drivetrain.speed)});
   },finish(seconds=35){
     for(let tick=0;tick<seconds*60&&!runner.done;tick++)this.tick();
     assert(runner.done,'Curve commands must finish within their allotted time');return this;
@@ -78,6 +78,17 @@ const wide=simulation([{...curve,lookahead:.8}]).finish();
 const maxError=result=>Math.max(...result.trace.map(point=>geometry.labCurveProject(path,point).distance));
 assert(maxError(wide)>maxError(forward)+.01,'Changing lookahead must affect the executed path');
 
+const peak=result=>Math.max(...result.trace.map(point=>point.speed));
+const regular=simulation([{t:'driveTo',x:0,z:1.5}]).finish();
+const fullCurve=simulation([{...curve,speed:1}]).finish();
+assert(peak(fullCurve)>=peak(regular)*.98,'A curve at 100% must reach regular DRIVE speed without a hidden bend multiplier');
+const regularReverse=simulation([{t:'driveTo',x:0,z:1.5,rev:true}],{yaw:Math.PI}).finish();
+const fullReverse=simulation([{...curve,speed:1,rev:true}],{yaw:Math.PI}).finish();
+assert(peak(fullReverse)>=peak(regularReverse)*.98,'A reverse curve at 100% must reach regular REV speed');
+for(const result of [fullCurve,fullReverse])assert(Math.hypot(result.robot.root.position.x-1,result.robot.root.position.z-1)<.1,'Full-speed curves must still reach their endpoint');
+const adaptive=simulation([{...curve,speed:1,adaptive:true}]).finish();
+assert(peak(adaptive)<peak(fullCurve)*.97,'Slowing for bends must be an explicit adaptive-speed option');
+
 const mixed=simulation([curve,{t:'driveTo',x:1.5,z:1},{t:'wait',ms:500}]).finish();
 assert(Math.hypot(mixed.robot.root.position.x-1.5,mixed.robot.root.position.z-1)<.15,'A straight DRIVE must work after a curve');
 const loop={...curve,x:0,z:0,c1x:1,c1z:0,c2x:1,c2z:1,speed:.4};
@@ -103,4 +114,4 @@ editor.moveEnd(0,1.1,1);
 assert(Math.abs(draft.steps[0].c2x-previousC2-.1)<1e-8);
 assert(Math.abs(draft.steps[1].c1x-nextC1-.1)<1e-8);
 assert.deepEqual(JSON.parse(JSON.stringify(draft.steps)),draft.steps);
-console.log('Passed: Bézier geometry, circle lookahead, FWD/REV tracking, speed/lookahead tuning, long curves, loops, mixed commands, independent followers, and connected handle editing.');
+console.log('Passed: Bézier geometry, FWD/REV tracking, full DRIVE-speed curves, optional adaptive easing, lookahead tuning, long curves, loops, mixed commands, independent followers, and handle editing.');

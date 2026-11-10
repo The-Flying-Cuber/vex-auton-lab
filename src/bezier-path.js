@@ -6,7 +6,8 @@ export function labCurveClamp(value,low,high) {
 export function labCurveOptions(step) {
   return {
     lookahead:labCurveClamp(Number.isFinite(step.lookahead)?step.lookahead:.3,.1,1),
-    speed:labCurveClamp(Number.isFinite(step.speed)?step.speed:.55,.1,1)
+    speed:labCurveClamp(Number.isFinite(step.speed)?step.speed:1,.1,1),
+    adaptive:step.adaptive===true
   };
 }
 
@@ -15,7 +16,7 @@ export function labBezierPoint(start,step,t) {
   return {x:a*start.x+b*step.c1x+c*step.c2x+d*step.x,z:a*start.z+b*step.c1z+c*step.c2z+d*step.z};
 }
 
-export function labMakeCurve(start,end,{bend=.18,rev=false,lookahead=.3,speed=.55,limit=Infinity}={}) {
+export function labMakeCurve(start,end,{bend=.18,rev=false,lookahead=.3,speed=1,adaptive=false,limit=Infinity}={}) {
   const dx=end.x-start.x,dz=end.z-start.z,length=Math.hypot(dx,dz);
   const offset=Math.min(Math.abs(bend),length*.3)*Math.sign(bend);
   const nx=length>1e-8?dz/length:0,nz=length>1e-8?-dx/length:0;
@@ -24,7 +25,7 @@ export function labMakeCurve(start,end,{bend=.18,rev=false,lookahead=.3,speed=.5
     t:'curveTo',x:bound(end.x),z:bound(end.z),
     c1x:bound(start.x+dx/3+nx*offset),c1z:bound(start.z+dz/3+nz*offset),
     c2x:bound(start.x+dx*2/3+nx*offset),c2z:bound(start.z+dz*2/3+nz*offset),
-    rev:!!rev,...labCurveOptions({lookahead,speed})
+    rev:!!rev,...labCurveOptions({lookahead,speed,adaptive})
   };
 }
 

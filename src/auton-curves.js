@@ -64,6 +64,10 @@ const labCurves={
     const tuning=tI('div','lab-curve-row');
     tuning.append(this.numeric(step,index,'lookahead','Lookahead (m)',{min:.1,max:1}),this.numeric(step,index,'speed','Speed (%)',{min:.1,max:1,scale:100,stepSize:5}));
     tuning.title='Smaller lookahead follows bends tighter. Larger lookahead turns more gently.';
+    const adaptive=tI('button','auton-revmini'+(step.adaptive?' rev':''),step.adaptive?'ADAPTIVE SPEED':'FIXED SPEED');
+    adaptive.setAttribute('aria-pressed',String(!!step.adaptive));
+    adaptive.title='Fixed: use the requested speed throughout, like DRIVE. Adaptive: slow for tight bends and the endpoint.';
+    adaptive.onclick=()=>{vi();step.adaptive=!step.adaptive;rC();};tuning.append(adaptive);
     fields.append(tuning);
     const handles=tI('details','lab-curve-coordinates'),summary=tI('summary','','Control points');handles.append(summary);
     const disclosureKey=Y.editingId+':'+index;handles.open=this.expanded.has(disclosureKey);
@@ -210,6 +214,7 @@ Xe=function(){
 };
 
 const LAB_CURVE_CSS=`
+ .auton-head{flex-shrink:0}
  .auton-bar{flex-wrap:wrap;gap:8px!important}.auton-hint{flex-basis:180px}
  #lab-curve-tool.on{background:#d5adff;border-color:#d5adff}
  .lab-curve-card{display:grid!important;grid-template-columns:13px 22px minmax(0,1fr) repeat(3,24px);align-items:center!important;gap:8px!important}
@@ -223,4 +228,5 @@ const LAB_CURVE_CSS=`
  .lab-curve-note,.lab-curve-coordinates summary{font-size:10px;color:#aebede;line-height:1.4}
  .lab-curve-coordinates summary{cursor:pointer;color:#d5adff;margin-bottom:4px}
  .lab-curve-coordinates .lab-curve-row{padding:5px 0}
+ @media(min-width:881px) and (max-height:780px){.auton-left{align-items:center}.auton-left .auton-canvas{width:calc(100vh - 400px)!important;height:auto!important;max-width:100%}}
 `;

@@ -9,6 +9,8 @@ function source(prefix) {
   for(let i=js.indexOf('{',start);i<js.length;i++) {
     const char=js[i];
     if(quote){if(escaped)escaped=false;else if(char==='\\')escaped=true;else if(char===quote)quote=null;continue;}
+    if(char==='/'&&js[i+1]==='/'){i=js.indexOf('\n',i);if(i<0)break;continue;}
+    if(char==='/'&&js[i+1]==='*'){i=js.indexOf('*/',i+2)+1;continue;}
     if(char==='"'||char==="'"||char==='`'){quote=char;continue;}
     if(char==='{')depth++;
     if(char==='}'&&--depth===0)return js.slice(start,i+1);
@@ -26,10 +28,10 @@ class Vector {
   set(x,y,z){this.x=x;this.y=y;this.z=z;return this;}
   copy(other){return this.set(other.x,other.y,other.z);}
 }
-const helpers=['_Y','mS','HS','TS','bY','OY','xS','mY','labRefreshLoaderVisits','labRobotCanLoad'];
-const {Loader,Transfer,Intake}=vm.runInNewContext(
+const helpers=['_Y','mS','HS','TS','bY','OY','xS','mY','labRefreshLoaderVisits','labRobotCanLoad','labRobotTouchesLoader'];
+const {Loader,Transfer,Intake,touches}=vm.runInNewContext(
   helpers.filter(name=>js.includes('function '+name+'(')).map(name=>source('function '+name+'(')).join('\n')+
-  ['vY','QL','zq'].map(name=>source('class '+name+'{')).join('\n')+';({Loader:vY,Transfer:QL,Intake:zq})',{M:config,p:Vector});
+  ['vY','QL','zq'].map(name=>source('class '+name+'{')).join('\n')+';({Loader:vY,Transfer:QL,Intake:zq,touches:typeof labRobotTouchesLoader==="function"?labRobotTouchesLoader:null})',{M:config,p:Vector});
 function station(id,z,alliance='red') {
   const x=alliance==='red'?-1.7342:1.7342;
   return {id,alliance,colorA:alliance,colorB:'yellow',rotY:Math.PI/2,
@@ -63,6 +65,18 @@ for(const mode of ['match','skills']) {
   assert.equal(one.transfer.received.at(-1).matchLoadId,'red-far','Robot 1 must also use the far loader');
   assert.equal(two.transfer.received.at(-1).matchLoadId,'red-near','Robot 2 must also use the near loader');
   assert.equal(two.transfer.received.at(-1).options.flip,true,'Loader orientation must follow the robot using it');
+}
+
+// The body or intake can enter the pickup area before the center reaches the
+// old tiny trigger. Check the near (bottom-left) and far (top-left) red corners.
+for(const mode of ['match','skills'])for(const corner of [0,1])for(const index of [1,2]) {
+  const loads=manager(mode),loader=loads.loaders[corner],bot=robot(index,loader);
+  Object.assign(bot.root.position,{x:-1.25,z:Math.sign(loader.trigger.z)*1.25});
+  loads.update([bot]);
+  assert.equal(bot.transfer.received.length,1,`${mode} Robot ${index} must load when its body enters red corner ${corner}`);
+  bot.root.position.x=-1.05;bot.root.position.z=loader.trigger.z;bot.root.rotation.y=-Math.PI/2;bot.intake={frontZ:.21};
+  assert(touches(loader,bot),'An intake reaching into the pickup area must count');
+  bot.root.rotation.y=Math.PI/2;assert(!touches(loader,bot),'A distant intake facing away must not activate the loader');
 }
 
 // A full robot in the trigger must not monopolize a loader. Each robot rearms
@@ -105,4 +119,15 @@ for(let index=0;index<2;index++)for(const colors of [['red','yellow'],['blue','y
 }
 const cupOnly=emptyTransfer(0,'cup'),blocked=cupOnly.pin('blue','yellow');cupOnly.transfer._tryCapture([blocked]);
 assert.equal(cupOnly.transfer.captured.pin,null,'An explicit cup-only intake filter must still be respected');
-console.log('Passed: both robots at both red loaders in Match/Skills, independent loader visits, shared supplies, per-robot orientation, and red/yellow, blue/yellow, and red/blue pin pickup.');
+
+const extension=await readFile(new URL('../src/auton-lab.js',import.meta.url),'utf8');
+const draft={open:true,steps:[],rev:false},stations=manager('skills').loaders;
+const editor=vm.runInNewContext(extension.slice(0,extension.indexOf('\nconst LAB_CSS='))+';lab',{
+  Y:draft,Ao:{loaders:stations},Hn:()=>1.622,us:(value,low,high)=>Math.max(low,Math.min(high,value)),VC:value=>Math.round(value*100)/100,vi(){},rC(){}
+});
+editor.addLoaderTarget('red-near');editor.addLoaderTarget('red-far');
+assert.deepEqual(JSON.parse(JSON.stringify(draft.steps)),[
+  {t:'driveTo',x:-1.53,z:-1.49},{t:'intake',ms:1000},
+  {t:'driveTo',x:-1.53,z:1.49},{t:'intake',ms:1000}
+],'The A/B buttons must add the exact top-left and bottom-left loader targets');
+console.log('Passed: both red corners in Match/Skills, body/intake contact, independent visits, shared supplies, per-robot orientation, all pin colors, and exact loader waypoint buttons.');

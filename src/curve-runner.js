@@ -25,9 +25,10 @@ PL.prototype._st_curveTo=function(step,dt) {
     this._advance();return;
   }
   if(this.phase==='curve-align') {
-    this.dummy.setKey('KeyW',false);this.dummy.setKey('KeyS',false);this.dummy.setThrottle(0);
-    if(Math.abs(this._steerToward(state.startYaw,dt))<.12)this.phase='curve-drive';
-    return;
+    if(Math.abs(this._steerToward(state.startYaw,dt))>=.12) {
+      this.dummy.setKey('KeyW',false);this.dummy.setKey('KeyS',false);this.dummy.setThrottle(0);return;
+    }
+    this.phase='curve-drive';
   }
   const target=labCurveLookahead(path,position,state.progress,options.lookahead);
   const steering=labPurePursuit(position,this.cmdYaw,target,!!step.rev);
@@ -39,8 +40,10 @@ PL.prototype._st_curveTo=function(step,dt) {
   const velocity=Math.max(.04,Math.abs(this.robot.drivetrain?.speed??0));
   const yawRate=labCurveClamp(velocity*steering.curvature,-M.auton.turnRate,M.auton.turnRate);
   this.cmdYaw=Wt(this.cmdYaw+yawRate*dt);this.dummy.setYaw(this.cmdYaw);
-  const turnScale=1/Math.sqrt(1+Math.abs(steering.curvature)*.4);
-  const endScale=labCurveClamp(endDistance/Math.max(options.lookahead,.2),.18,1);
+  // Fixed 100% uses exactly the same throttle as a normal W/S DRIVE block.
+  // Corner and endpoint easing is available only when explicitly selected.
+  const turnScale=options.adaptive?1/Math.sqrt(1+Math.abs(steering.curvature)*.4):1;
+  const endScale=options.adaptive?labCurveClamp(endDistance/Math.max(options.lookahead,.2),.18,1):1;
   const throttle=options.speed*turnScale*endScale*(step.rev?-M.robot.reverseScale:1);
   this.dummy.setThrottle(throttle);
   this.dummy.setKey('KeyW',!step.rev);this.dummy.setKey('KeyS',!!step.rev);

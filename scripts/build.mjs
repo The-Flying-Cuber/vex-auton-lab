@@ -25,10 +25,11 @@ patch('carrying:r,reversing:c,inAuton:C}', 'carrying:r&&(!C||!this._autonRunner|
 // and one robot's visit must not hold the other robot's rearm latch closed.
 patch('I.ready=!0,I.active=null,I.open=!1;', 'I.ready=!0,I.active=null,I.open=!1,I._labServed=new Set;');
 patch('const E=g.filter(n=>_Y(Q,n,this.mode)),t=E.length>0;', 'const E=g.filter(n=>_Y(Q,n,this.mode)),t=E.length>0;labRefreshLoaderVisits(Q,E);');
-patch('!o&&mS(r,Q.trigger,C.triggerHalfWidth,C.triggerHalfDepth)&&(o=n)', '!o&&mS(r,Q.trigger,C.triggerHalfWidth,C.triggerHalfDepth)&&labRobotCanLoad(Q,n)&&(o=n)');
+patch('!e&&mS(r,Q.trigger,C.triggerHalfWidth+C.rearmMargin,C.triggerHalfDepth+C.rearmMargin)&&(e=n)', '!e&&labRobotTouchesLoader(Q,n,C.rearmMargin)&&(e=n)');
+patch('!o&&mS(r,Q.trigger,C.triggerHalfWidth,C.triggerHalfDepth)&&(o=n)', '!o&&labRobotTouchesLoader(Q,n)&&labRobotCanLoad(Q,n)&&(o=n)');
 patch('if(!o||!Q.ready||this._supplyLeft(Q)<=0||this._spawnBlocked(Q))continue;', 'if(!o||this._supplyLeft(Q)<=0||this._spawnBlocked(Q))continue;');
 patch('this._spawn(Q,o,a.kind,a),Q.ready=!1', 'this._spawn(Q,o,a.kind,a),Q.ready=!1,Q._labServed.add(o)');
-patch('const t=tE("red");A.fillStyle=Ml()?', 'const t=lab.editorPose();A.fillStyle=Ml()?');
+patch('const t=tE("red");A.fillStyle=Ml()?', 'lab.drawLoaderZones(A,I,g,C,B);const t=lab.editorPose();A.fillStyle=Ml()?');
 patch('let E=tE("red").x,t=tE("red").z;', 'const labStart=lab.editorPose();let E=labStart.x,t=labStart.z;');
 patch('n.t==="driveTo"?(A.beginPath(),A.moveTo(C(o),B(s)),A.lineTo(C(n.x),B(n.z)),', '(n.t==="driveTo"||n.t==="curveTo")?(A.beginPath(),A.moveTo(C(o),B(s)),labCurves.trace(A,C,B,n),');
 patch('n.t==="driveTo"&&(a++,', '(n.t==="driveTo"||n.t==="curveTo")&&(a++,');
