@@ -13,7 +13,7 @@ assert(!html.includes('cloudflareinsights'));
 assert(!html.includes('_vercel/insights'));
 assert(!js.includes('"/models/'));
 assert(!js.includes('"/asset-manifest.json"'));
-assert(html.includes('src="./assets/main.js"'));
+assert(/src="\.\/assets\/main\.js\?v=[a-f0-9]+"/.test(html));
 for(const asset of ['pin.glb','cup.glb','goal_tall.glb','goal_alliance.glb','goal_neutral.glb','matchloader.glb']) {
   assert((await stat(new URL('dist/models/'+asset,root))).size>1000);
 }

@@ -48,20 +48,9 @@ const lab = {
     this.run = this.config.run;
     this.active = this.config.active;
     this.camera = this.config.camera;
-    const store = Zy();
-    for (const mode of ['match','skills']) {
-      for (let index = 0; index < 2; index++) {
-        const id = this.config.routines[mode][index];
-        if (!store.autos.some(auto => auto.id === id)) {
-          const replacement = `lab-${mode}-${index+1}`;
-          if (!store.autos.some(auto => auto.id === replacement)) {
-            store.autos.push({ id:replacement, name:`${mode === 'match' ? 'Match' : 'Skills'} · Robot ${index+1}`, steps:[] });
-          }
-          this.config.routines[mode][index] = replacement;
-        }
-      }
-    }
-    Wa(store);
+    const isolated=labIsolateRoutines(Zy(),this.config.routines,ZL);
+    this.config.routines=isolated.routines;
+    Wa(isolated.store);
     this.save();
   },
   save() {
@@ -215,21 +204,85 @@ const lab = {
     return (store.autos.find(auto => auto.id === id)?.steps || []).map(step => ({...step}));
   },
   remember() {
-    if (!this.config || !Y.store) return;
-    const id = Y.store.selectedId;
-    if (Y.store.autos.some(auto => auto.id === id)) this.config.routines[this.mode][this.active] = id;
+    // The upstream selectedId is shared by the whole library. It must never
+    // assign a routine to whichever robot happens to be on screen.
     this.save();
   },
   selectRoutine() {
-    const store = Y.store || Zy();
+    const store = Y.open&&Y.store ? Y.store : Zy();
     let id = this.config.routines[this.mode][this.active];
-    if (!store.autos.some(auto => auto.id === id)) {
-      id = store.autos[0]?.id;
-      this.config.routines[this.mode][this.active] = id;
+    const isolated=labIsolateRoutines(store,this.config.routines,ZL);
+    this.config.routines=isolated.routines;id=this.config.routines[this.mode][this.active];
+    const ownedStore=isolated.store;
+    ownedStore.selectedId = id;
+    Wa(ownedStore);this.save();
+    if (Y.open) { Y.store=ownedStore; kl(id); }
+  },
+  saveEditedRoutine() {
+    const saved=labSaveRoutine(Zy(),{mode:this.mode,robot:this.active,id:Y.editingId,name:Y.name,steps:Y.steps},ZL);
+    Y.store=saved.store;Y.editingId=saved.id;
+    this.config.routines[this.mode][this.active]=saved.id;
+    Wa(saved.store);this.save();yl();
+  },
+  openRoutine(id) {
+    const owner=labRoutineOwner(this.mode,this.active);
+    let auto=Y.store.autos.find(record=>record.id===id&&record.labOwner===owner)
+      ||Y.store.autos.find(record=>record.id===this.config.routines[this.mode][this.active]&&record.labOwner===owner)
+      ||Y.store.autos.find(record=>record.labOwner===owner);
+    if(!auto){
+      const made=labSaveRoutine(Y.store,{mode:this.mode,robot:this.active,name:`Robot ${this.active+1} path`,steps:[]},ZL);
+      Y.store=made.store;auto=Y.store.autos.find(record=>record.id===made.id);
     }
-    store.selectedId = id;
-    Wa(store);
-    if (Y.open) { Y.store=store; kl(id); }
+    this.config.routines[this.mode][this.active]=auto.id;Y.store.selectedId=auto.id;
+    Wa(Y.store);this.save();labOriginalKL(auto.id);
+  },
+  newRoutine() {
+    const made=labSaveRoutine(Zy(),{mode:this.mode,robot:this.active,name:'Untitled auto',steps:[]},ZL);
+    Y.store=made.store;this.config.routines[this.mode][this.active]=made.id;
+    Wa(Y.store);this.save();this.openRoutine(made.id);
+  },
+  switchRobot(index) {
+    if(index===this.active)return;
+    // Keep each tab's edits when changing robots, without a shared draft.
+    if(Y.open&&Y.editingId)this.saveEditedRoutine();
+    this.switchTo(()=>{this.active=index;});
+  },
+  renderRobotTabs() {
+    const tabs=document.getElementById('auton-chips');if(!tabs)return;
+    tabs.textContent='';tabs.classList.add('lab-robot-tabs');tabs.setAttribute('role','tablist');tabs.setAttribute('aria-label','Robot paths');
+    for(let index=0;index<2;index++){
+      const selected=index===this.active;
+      const button=tI('button','auton-chip lab-robot-tab'+(selected?' on':''),`Robot ${index+1}${selected&&ip()?' •':''}`);
+      button.setAttribute('role','tab');button.setAttribute('aria-selected',String(selected));button.dataset.robot=String(index);
+      button.onclick=()=>this.switchRobot(index);tabs.append(button);
+    }
+    this.renderPathSelector();
+  },
+  renderPathSelector() {
+    const select=document.getElementById('lab-path-select');if(!select||!Y.store)return;
+    select.textContent='';const owner=labRoutineOwner(this.mode,this.active);
+    const own=document.createElement('optgroup');own.label=`Robot ${this.active+1} paths`;
+    const others=document.createElement('optgroup');others.label='Copy another saved path';
+    for(const auto of Y.store.autos){
+      const option=document.createElement('option');
+      if(auto.labOwner===owner){option.value=auto.id;option.textContent=auto.id===Y.editingId?(Y.name||'Untitled auto'):auto.name;own.append(option);}
+      else{
+        option.value='copy:'+auto.id;
+        const label=auto.labOwner?auto.labOwner.replace(':robot',' · Robot '):'saved path';
+        option.textContent=`${auto.name} — ${label}`;others.append(option);
+      }
+    }
+    select.append(own);if(others.children.length)select.append(others);select.value=Y.editingId;
+  },
+  choosePath(value) {
+    gr(()=>{
+      if(value.startsWith('copy:')){
+        const source=Y.store.autos.find(auto=>auto.id===value.slice(5));if(!source)return;
+        const made=labSaveRoutine(Y.store,{mode:this.mode,robot:this.active,id:source.id,name:source.name+' copy',steps:source.steps},ZL);
+        Y.store=made.store;value=made.id;
+      }
+      this.openRoutine(value);rC();
+    });
   },
   prepare() {
     if (!aE) return;
@@ -356,13 +409,14 @@ const lab = {
     const field=group('FIELD');
     button(field,'Match · 15 sec',this.mode==='match',()=>this.switchTo(()=>{this.mode='match';}));
     button(field,'Skills · 60 sec',this.mode==='skills',()=>this.switchTo(()=>{this.mode='skills';}));
+    const path=group('PATH');
+    const select=document.createElement('select');select.id='lab-path-select';select.className='auton-in lab-path-select';
+    select.setAttribute('aria-label',`Robot ${this.active+1} path`);
+    select.onchange=()=>{const value=select.value;select.value=Y.editingId;this.choosePath(value);};path.append(select);
     const robots=group('RUN');
     button(robots,'Robot 1',this.run==='1',()=>this.switchTo(()=>{this.run='1';}));
     button(robots,'Robot 2',this.run==='2',()=>this.switchTo(()=>{this.run='2';}));
     button(robots,'Both robots',this.run==='both',()=>this.switchTo(()=>{this.run='both';}));
-    const editing=group('EDITING');
-    button(editing,'Edit Robot 1',this.active===0,()=>this.switchTo(()=>{this.active=0;}));
-    button(editing,'Edit Robot 2',this.active===1,()=>this.switchTo(()=>{this.active=1;}));
     const camera=group('VIEW');
     button(camera,'Locked view',this.camera==='locked',()=>{this.setCamera('locked');this.mountControls();});
     button(camera,'Free cam',this.camera==='free',()=>{this.setCamera('free');this.mountControls();});
@@ -389,10 +443,13 @@ const lab = {
     Y.panel.querySelector('.auton-foot').append(test);
     const title=Y.panel.querySelector('.auton-title');
     title.innerHTML=`AUTON<em>CODER</em><small>${this.mode==='skills'?'SKILLS':'MATCH'} · ROBOT ${this.active+1}</small>`;
+    Y.panel.querySelector('.auton-foot .auton-btn.primary').textContent=`SAVE ROBOT ${this.active+1}`;
+    Y.panel.querySelector('.auton-foot .auton-btn.good:not(.lab-run)').hidden=true;
     Y.panel.querySelectorAll('.auton-foot button:not(.lab-run)').forEach(el=>{
       if(!el.dataset.labRemember){el.dataset.labRemember='1';el.addEventListener('click',()=>this.remember());}
     });
     this.bindStartDrag();
+    this.renderRobotTabs();
   },
   redSideView() {
     if(this.originalFov==null)this.originalFov=xg.fov;
@@ -504,6 +561,14 @@ const LAB_CSS=`
  .lab-label{font-size:10px;font-weight:800;letter-spacing:.12em;color:#9fb2d2;margin-right:4px}
  .lab-pose-label{font-size:10px;color:#9fb2d2;display:flex;align-items:center;gap:4px}
  .lab-pose-label input{width:65px!important}
+ .lab-robot-tabs{overflow:visible!important;gap:8px!important}
+ .lab-robot-tab{min-width:110px;font-size:14px!important}
+ .lab-robot-tab[data-robot="1"].on{background:#ffb068;border-color:#ffb068}
+ .lab-path-select{width:200px!important;max-width:45vw;color:#e8edf5}
+ .lab-path-select option,.lab-path-select optgroup{background:#151c2c;color:#e8edf5}
+ .auton-foot [hidden]{display:none!important}
+ .auton-foot .auton-btn.primary{white-space:nowrap}
+ @media(min-width:881px){.auton-left{width:464px;min-width:0}.auton-hint{min-width:0}}
  #lab-start-robots .lab-start-selected{background:#37a0ff;color:#04101f;border-color:#37a0ff}
  .auton-title small{display:block;font-size:9px;letter-spacing:.08em;margin-top:5px;color:#7fdcff;white-space:nowrap}
  .auton-foot .lab-run{margin-left:auto;white-space:nowrap}
@@ -514,6 +579,11 @@ const LAB_CSS=`
  @media(max-width:880px){.auton-panel{overflow:auto!important}.auton-left{align-items:center}.auton-canvas{max-width:100%;height:auto!important}.auton-left{padding:12px!important}.auton-right{min-height:300px}.auton-title{font-size:11px!important}#lab-options{padding:10px 12px;gap:8px}.auton-head{padding:12px!important}#lab-runbar span{display:none}}
 `;
 
+const labOriginalKL=kl;
+kl=id=>lab.openRoutine(id);
+kD=()=>lab.saveEditedRoutine();
+Bp=()=>lab.newRoutine();
+Ps=()=>lab.renderRobotTabs();
 lab.load();
 M.scoring.robotAlliance='red';
 M.arena.warehouse.enabled=false;

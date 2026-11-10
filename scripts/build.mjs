@@ -26,7 +26,7 @@ patch('E=Math.min(E+MA,B*2);let GI=0;for(;E>=B&&GI<2;)', 'E=Math.min(E+MA,B*(lab
 patch('GI===2&&E>=B&&(E=0,Rg.snapRenderState(Kg.all))', 'GI===(lab.testing?8:2)&&E>=B&&(E=0,Rg.snapRenderState(Kg.all))');
 patch('UI.tick(MA),UI.tickSettle(MA)', 'UI.tick(lab.testing?GI*B:MA),UI.tickSettle(lab.testing?GI*B:MA)');
 patch('eI.showToast(sA?`DRIVER · Auton bonus ${nI}`:"DRIVER CONTROL")', 'eI.showToast(lab.testing?"AUTON COMPLETE":sA?`DRIVER · Auton bonus ${nI}`:"DRIVER CONTROL")');
-patch('ox();\n', await read('src/auton-lab.js'));
+patch('ox();\n', (await read('src/routine-store.js')).replace(/^export /gm,'')+'\n'+await read('src/auton-lab.js'));
 js=js.replaceAll('Click to add a waypoint · drag a point to move it · ⌘Z / ⌘⇧Z to undo', 'Drag the numbered start to move · drag its handle to turn · click to add waypoints · ⌘Z to undo steps');
 // Resolve resources relative to the page so /<repository>/ works on Pages.
 js=js.replaceAll('"/models/','"./models/').replaceAll('"/sounds/','"./sounds/').replaceAll('"/asset-manifest.json"','"./asset-manifest.json"');
@@ -36,7 +36,8 @@ html=html.replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>/,'');
 html=html.replace(/<link rel="canonical"[^>]+>/,'');
 html=html.replace(/<meta (?:property="og:|name="twitter:)[^>]+>/g,'');
 html=html.replace('<title>Vsimulator</title>','<title>Vsimulator · Auton Lab</title>');
-html=html.replace('src="/assets/main-DU0EI9mN.js"','src="./assets/main.js"');
+const buildVersion=createHash('sha256').update(js).digest('hex').slice(0,12);
+html=html.replace('src="/assets/main-DU0EI9mN.js"',`src="./assets/main.js?v=${buildVersion}"`);
 html=html.replaceAll('href="/assets/','href="./assets/').replaceAll('href="/images/','href="./images/').replaceAll('url(/images/','url(./images/').replaceAll('url("/images/','url("./images/').replaceAll("url('/images/","url('./images/");
 html=html.replaceAll('href="/terms"','href="https://sim.robostem.org/terms"').replaceAll('href="/privacy"','href="https://sim.robostem.org/privacy"');
 await writeFile(new URL('dist/assets/main.js',project),js);
