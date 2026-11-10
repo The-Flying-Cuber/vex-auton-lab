@@ -1,0 +1,1861 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- ===== SEO / social ===== -->
+  <title>Vsimulator</title>
+  <meta name="description" content="Drive, score, and compete in our VEX robotics simulator in singleplayer or live multiplayer, right in your browser." />
+  <meta name="keywords" content="VEX robotics simulator, robotics competition simulator, V5RC simulator, online robotics game, multiplayer robotics simulator, robot driving game, VEX Override simulator, free robotics simulator, browser robotics game" />
+  <link rel="canonical" href="https://sim.robostem.org/" />
+  <meta name="theme-color" content="#0b0e14" />
+
+  <!-- favicon (transparent PNG with alpha channel) -->
+  <link rel="icon" href="/images/favicon.png" type="image/png" />
+  <link rel="apple-touch-icon" href="/images/favicon.png" />
+
+  <!-- Open Graph (Discord / Facebook / iMessage previews) -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Vsimulator" />
+  <meta property="og:description" content="Drive, score, and compete in our VEX robotics simulator in singleplayer or live multiplayer, right in your browser." />
+  <meta property="og:url" content="https://sim.robostem.org/" />
+  <meta property="og:image" content="https://sim.robostem.org/og-image.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+
+  <!-- Twitter / X card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Vsimulator" />
+  <meta name="twitter:description" content="Drive, score, and compete in our VEX robotics simulator in singleplayer or live multiplayer, right in your browser." />
+  <meta name="twitter:image" content="https://sim.robostem.org/og-image.png" />
+
+  <!-- Structured data: identity + game/app (sitelinks searchbox markup is deprecated, omitted) -->
+  <script type="application/ld+json">
+  [
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "RoboStem",
+      "url": "https://robostem.org/",
+      "logo": "https://sim.robostem.org/images/logo-ui.png"
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "Vsimulator",
+      "url": "https://sim.robostem.org/"
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": ["VideoGame", "WebApplication"],
+      "name": "Vsimulator",
+      "url": "https://sim.robostem.org/",
+      "description": "A free online VEX robotics competition simulator with singleplayer skills runs and real-time multiplayer matches, playable in any browser.",
+      "genre": ["Simulation", "Sports", "Educational"],
+      "gamePlatform": "Web browser",
+      "playMode": ["SinglePlayer", "MultiPlayer"],
+      "applicationCategory": "GameApplication",
+      "operatingSystem": "Any (modern web browser)",
+      "browserRequirements": "Requires a modern web browser with WebGL",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+    }
+  ]
+  </script>
+  <!-- ===== /SEO ===== -->
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root { --ui-font: 'Schibsted Grotesk', 'Trebuchet MS', system-ui, sans-serif; }
+    /* crawlable-but-hidden SEO copy (kept in the accessibility tree) */
+    .seo-content { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+           overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #0b0e14; }
+    #app { position: fixed; inset: 0; }
+    canvas { display: block; }
+
+    /* ---------- HUD ---------- */
+    #hud { position: fixed; inset: 0; pointer-events: none;
+           font-family: var(--ui-font); color: #e8edf5; }
+    #hud .panel { position: absolute; background: rgba(12,16,24,0.62);
+           border: 1px solid rgba(120,160,220,0.25); border-radius: 10px;
+           padding: 10px 14px; backdrop-filter: blur(4px); }
+
+    #liftPanel { right: 18px; bottom: 18px; width: 60px; height: 220px;
+           display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    #liftTrack { position: relative; flex: 1; width: 14px; background: rgba(255,255,255,0.08);
+           border-radius: 8px; overflow: hidden; }
+    #liftFill { position: absolute; left: 0; bottom: 0; width: 100%;
+           background: linear-gradient(180deg,#5ad1ff,#2f7bff); border-radius: 8px; }
+    #liftPanel .lbl { font-size: 11px; opacity: 0.8; letter-spacing: 0.5px; }
+
+    #statePanel { left: 18px; bottom: 18px; min-width: 200px; font-size: 13px; line-height: 1.7; }
+    #statePanel .row { display: flex; justify-content: space-between; gap: 18px; }
+    #statePanel .k { opacity: 0.65; }
+    #statePanel .v { font-weight: 600; }
+    .chip { padding: 1px 8px; border-radius: 999px; font-size: 12px; }
+    .chip.on  { background: rgba(70,200,120,0.25); color: #7CFFB0; }
+    .chip.off { background: rgba(255,255,255,0.08); color: #aab; }
+    .chip.red { background: rgba(226,58,58,0.25); color: #ff9d9d; }
+    .chip.blue { background: rgba(58,124,226,0.25); color: #9fc3ff; }
+
+    #intakeBar { left: 50%; bottom: 26px; transform: translateX(-50%);
+           width: 220px; height: 6px; background: rgba(255,255,255,0.10);
+           border-radius: 6px; overflow: hidden; opacity: 0; transition: opacity 0.15s;
+           border: 1px solid rgba(120,160,220,0.25); padding: 0; }
+    #intakeBar.show { opacity: 1; }
+    #intakeFill { height: 100%; width: 0%;
+           background: linear-gradient(90deg,#5ad1ff,#2f7bff); border-radius: 6px; }
+
+    #prompt { left: 50%; top: 70%; transform: translateX(-50%);
+           font-size: 15px; font-weight: 600; text-align: center;
+           background: rgba(40,120,255,0.22); border-color: rgba(90,150,255,0.5);
+           opacity: 0; transition: opacity 0.2s; }
+    #prompt.show { opacity: 1; }
+
+    /* broadcast scoreboard: Red | clock | Blue, centered at the top */
+    #scoreboard { position: absolute; left: 50%; top: 14px; transform: translateX(-50%);
+           display: flex; align-items: stretch; gap: 2px;
+           border-radius: 8px; overflow: hidden;
+           box-shadow: 0 6px 20px rgba(0,0,0,0.45);
+           font-variant-numeric: tabular-nums; }
+    #scoreboard .sb { display: flex; align-items: center; justify-content: center;
+           min-width: 70px; padding: 6px 16px; font-size: 26px; font-weight: 800;
+           letter-spacing: 0.5px; line-height: 1; }
+    #scoreboard .sb.blue { background: #3a7ce2; color: #fff; }
+    #scoreboard .sb.red  { background: #e23a3a; color: #fff; }
+    #scoreboard.skills .sb.blue { background: #242b36; font-size: 14px; letter-spacing: 0.08em; }
+    #scoreboard.skills .sb.red { background: #e23a3a; }
+    #scoreboard .sb.time { background: #f3f5f8; color: #15181d; min-width: 86px;
+           font-size: 24px; font-weight: 700; }
+
+    #keys { left: 18px; top: 18px; font-size: 12px; line-height: 1.8; opacity: 0.9; display: none; }
+    #keys.show { display: block; }
+    #keys b { display: inline-block; min-width: 64px; color: #9fc3ff; }
+    #keys .keyhint { opacity: 0.5; margin-top: 4px; font-size: 11px; }
+
+    #perfCounter { position: absolute; right: 12px; bottom: 8px;
+           color: #fff; font-family: inherit; font-size: 13px; font-weight: 600;
+           font-variant-numeric: tabular-nums; line-height: 1.35; text-align: right; }
+    #delayCounter { opacity: 0.82; }
+
+    #toast { right: 18px; top: 18px; padding: 5px 10px; border-radius: 8px;
+           font-size: 12px; font-weight: 600; color: #ffd6d6;
+           background: rgba(220,70,70,0.20); border-color: rgba(255,120,120,0.5);
+           opacity: 0; transform: translateY(-4px); transition: opacity 0.18s, transform 0.18s; }
+    #toast.show { opacity: 1; transform: translateY(0); }
+
+    /* social notifications (friend online, friend request, room invite) — above all overlays */
+    .notify-root { position: fixed; top: 16px; right: 16px; z-index: 30; display: flex; flex-direction: column;
+           gap: 10px; width: min(320px, calc(100vw - 32px)); pointer-events: none; }
+    .notify-card { pointer-events: auto; display: flex; align-items: flex-start; gap: 11px; padding: 11px 12px;
+           border-radius: 13px; color: #eaf1ff; font: 500 13px var(--ui-font);
+           background: linear-gradient(180deg, rgba(24,32,50,0.97), rgba(15,20,32,0.98));
+           border: 1px solid rgba(125,165,225,0.22); box-shadow: 0 10px 30px rgba(0,0,0,0.42);
+           opacity: 0; transform: translateX(12px); transition: opacity 0.2s ease, transform 0.2s ease; }
+    .notify-card.show { opacity: 1; transform: translateX(0); }
+    .notify-av { width: 38px; height: 38px; border-radius: 50%; overflow: hidden; flex: none; display: grid; place-items: center; }
+    .notify-av img { width: 100%; height: 100%; object-fit: cover; }
+    .notify-av .pf-initial { width: 100%; height: 100%; border-radius: 50%; font-size: 16px; }
+    .notify-text { flex: 1; min-width: 0; }
+    .notify-title { font-size: 14px; font-weight: 700; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .notify-body { font-size: 12.5px; opacity: 0.78; margin-top: 1px; }
+    .notify-actions { display: flex; gap: 8px; margin-top: 9px; }
+    .notify-btn { padding: 6px 14px; border-radius: 9px; cursor: pointer; font: 600 13px var(--ui-font);
+           color: #cfe0ff; border: 1px solid rgba(125,165,225,0.32); background: rgba(255,255,255,0.05);
+           transition: background .12s, border-color .12s; }
+    .notify-btn:hover { background: rgba(127,220,255,0.14); border-color: #7fdcff; }
+    .notify-btn.primary { color: #06101e; background: #7fdcff; border-color: #7fdcff; }
+    .notify-btn.primary:hover { background: #9be6ff; }
+    .notify-close { flex: none; width: 22px; height: 22px; padding: 0; line-height: 1; cursor: pointer;
+           font-size: 18px; color: rgba(234,241,255,0.5); background: none; border: none; }
+    .notify-close:hover { color: #eaf1ff; }
+
+    /* pre-run countdown: a big centered 3·2·1 that pops on each tick */
+    #countdown { position: absolute; inset: 0; display: none; align-items: center; justify-content: center;
+           pointer-events: none; }
+    #countdown.show { display: flex; }
+    #countdown .n { font-family: var(--ui-font); font-weight: 800; font-size: 22vh; line-height: 1;
+           color: #f3f8ff; text-shadow: 0 6px 40px rgba(0,0,0,0.55), 0 0 18px rgba(120,180,255,0.35);
+           animation: cd-pop 1s ease-out; }
+    @keyframes cd-pop {
+      0% { opacity: 0; transform: scale(1.5); }
+      18% { opacity: 1; transform: scale(1); }
+      100% { opacity: 0.55; transform: scale(0.92); }
+    }
+
+    /* lowkey score-change bump on a scoreboard number */
+    #scoreboard .sb > span { display: inline-block; }
+    #sbBlue.pop, #sbRed.pop { animation: sb-pop 0.2s ease-out; }
+    @keyframes sb-pop {
+      0% { transform: scale(1); }
+      45% { transform: scale(1.13); }
+      100% { transform: scale(1); }
+    }
+    /* endgame: a gentle pulse on the clock (no harsh strobe) */
+    #scoreboard.endgame .sb.time { animation: eg-clock 1s ease-in-out infinite; }
+    @keyframes eg-clock {
+      0%, 100% { background: #f3f5f8; color: #15181d; }
+      50% { background: #ffdfdc; color: #8a1a14; }
+    }
+
+    /* endgame vignette: soft red field edges, slow breathing — minimalist */
+    /* Fade-in lives on the parent's opacity (transition); the breathing pulse runs
+       on the ::after's opacity. Separate properties on separate boxes, so the
+       infinite animation can't seize `opacity` and snap past the fade. */
+    #endgameVignette { position: absolute; inset: 0; pointer-events: none; opacity: 0;
+           transition: opacity 0.5s ease; }
+    #endgameVignette.show { opacity: 1; }
+    #endgameVignette::after { content: ''; position: absolute; inset: 0;
+           background: radial-gradient(120% 90% at 50% 50%, rgba(0,0,0,0) 58%, rgba(214,52,44,0.28) 100%); }
+    #endgameVignette.show::after { animation: eg-vignette 2.4s ease-in-out infinite; }
+    @keyframes eg-vignette { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
+
+    /* floating +N score popups, projected to a goal's screen position each frame */
+    #scorePopups { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+    .score-popup { position: absolute; left: 0; top: 0; will-change: transform, opacity;
+           font-family: var(--ui-font); font-weight: 800; font-size: 22px; line-height: 1;
+           font-variant-numeric: tabular-nums; color: #fff;
+           text-shadow: 0 2px 6px rgba(0,0,0,0.6), 0 0 2px rgba(0,0,0,0.5); }
+    .score-popup.red { color: #ff8b86; }
+    .score-popup.blue { color: #8fc0ff; }
+    .score-popup.skills { color: #ffe08a; }
+
+    /* results: subtle fade + rise of the card when the screen appears */
+    #resultsScreen:not(.hidden) .card { animation: res-reveal 0.35s ease-out; }
+    @keyframes res-reveal {
+      0% { opacity: 0; transform: translateY(14px) scale(0.98); }
+      100% { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    /* ---------- Overlays (shared shell for Pause + Settings) ---------- */
+    .overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+           background: radial-gradient(120% 90% at 50% 34%, rgba(22,32,56,0.74), rgba(5,8,13,0.93));
+           font-family: var(--ui-font); color: #eaf1ff; z-index: 10; }
+    .overlay.hidden { display: none; }
+    /* the in-run pause + settings backdrop is JUST a blur of the live scene —
+       no color/vignette over it; the popup card keeps its own background */
+    #pauseScreen, #settingsPage { background: none; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+    /* when Settings is opened from the home menu it layers over the menu: no blur,
+       so the home gradient + text stay crisp behind the settings card */
+    #settingsPage.over-menu { backdrop-filter: none; -webkit-backdrop-filter: none; }
+    /* Garage is always a home tab: no vignette/blur so the home menu stays crisp behind the card */
+    #garageScreen { background: none; }
+    /* Overlay panels + their inner scroll regions: the same subtle, inset thin
+       scrollbar the settings/garage cards use, so it stays clean over the rounded
+       dark cards instead of a chunky system bar. */
+    .lobby-panel, .games-panel, .games-grid, .room-list,
+    .room-panel, .room-main, .lb-panel, .lb-rows,
+    .match-panel, .profile-card, .page {
+      scrollbar-width: thin; scrollbar-color: rgba(125,165,225,0.32) transparent;
+    }
+    .lobby-panel::-webkit-scrollbar, .games-panel::-webkit-scrollbar,
+    .games-grid::-webkit-scrollbar, .room-list::-webkit-scrollbar,
+    .room-panel::-webkit-scrollbar, .room-main::-webkit-scrollbar,
+    .lb-panel::-webkit-scrollbar, .lb-rows::-webkit-scrollbar,
+    .match-panel::-webkit-scrollbar, .profile-card::-webkit-scrollbar,
+    .page::-webkit-scrollbar { width: 11px; height: 11px; }
+    .lobby-panel::-webkit-scrollbar-track, .games-panel::-webkit-scrollbar-track,
+    .games-grid::-webkit-scrollbar-track, .room-list::-webkit-scrollbar-track,
+    .room-panel::-webkit-scrollbar-track, .room-main::-webkit-scrollbar-track,
+    .lb-panel::-webkit-scrollbar-track, .lb-rows::-webkit-scrollbar-track,
+    .match-panel::-webkit-scrollbar-track, .profile-card::-webkit-scrollbar-track,
+    .page::-webkit-scrollbar-track { background: transparent; }
+    .lobby-panel::-webkit-scrollbar-thumb, .games-panel::-webkit-scrollbar-thumb,
+    .games-grid::-webkit-scrollbar-thumb, .room-list::-webkit-scrollbar-thumb,
+    .room-panel::-webkit-scrollbar-thumb, .room-main::-webkit-scrollbar-thumb,
+    .lb-panel::-webkit-scrollbar-thumb, .lb-rows::-webkit-scrollbar-thumb,
+    .match-panel::-webkit-scrollbar-thumb, .profile-card::-webkit-scrollbar-thumb,
+    .page::-webkit-scrollbar-thumb { background: rgba(125,165,225,0.3); border-radius: 999px;
+           border: 3px solid transparent; background-clip: padding-box; }
+    .lobby-panel::-webkit-scrollbar-thumb:hover, .games-panel::-webkit-scrollbar-thumb:hover,
+    .games-grid::-webkit-scrollbar-thumb:hover, .room-list::-webkit-scrollbar-thumb:hover,
+    .room-panel::-webkit-scrollbar-thumb:hover, .room-main::-webkit-scrollbar-thumb:hover,
+    .lb-panel::-webkit-scrollbar-thumb:hover, .lb-rows::-webkit-scrollbar-thumb:hover,
+    .match-panel::-webkit-scrollbar-thumb:hover, .profile-card::-webkit-scrollbar-thumb:hover,
+    .page::-webkit-scrollbar-thumb:hover { background: rgba(125,165,225,0.48); background-clip: padding-box; }
+    .card { position: relative; text-align: center; width: 100%; max-width: 420px;
+           padding: 40px 40px 30px;
+           background: linear-gradient(180deg, rgba(21,28,44,0.96), rgba(12,16,26,0.97));
+           border: 1px solid rgba(125,165,225,0.16); border-radius: 22px;
+           box-shadow: 0 28px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06); }
+    .card h1 { font-size: 40px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.04; margin-bottom: 8px; }
+    .card h1 span { color: #5ad1ff; }
+    .card .sub { opacity: 0.55; margin-bottom: 26px; font-size: 13px; font-weight: 500; letter-spacing: 0.02em; }
+    .controls { text-align: left; display: grid; grid-template-columns: auto 1fr; gap: 6px 18px;
+           font-size: 14px; margin: 0 auto 26px; width: max-content; }
+    .controls kbd { background: #1b2640; border: 1px solid #33446b; border-bottom-width: 2px;
+           border-radius: 6px; padding: 2px 9px; font-family: inherit; font-size: 13px; color: #cfe0ff; }
+    .controls .d { opacity: 0.8; align-self: center; }
+    .btn { pointer-events: auto; cursor: pointer; border: none; border-radius: 11px;
+           display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+           padding: 13px 26px; font-size: 15px; font-weight: 600; letter-spacing: 0;
+           color: #04101f; background: #57b6ff;
+           transition: background .14s ease, border-color .14s ease, transform .06s ease; }
+    .btn:hover { background: #74c4ff; }
+    .btn:active { transform: translateY(1px); }
+    .btn.hidden, .btn[hidden] { display: none; }   /* .btn's display would otherwise beat the UA [hidden] + scoped .hidden rules */
+    .btn svg { width: 18px; height: 18px; flex: none; }
+    .btn:disabled { cursor: default; opacity: 0.6; }
+    .btn:disabled:hover { background: #57b6ff; }
+    /* connecting: hide the label and spin a ring in place (keeps the button's size) */
+    .btn.loading { color: transparent !important; pointer-events: none; position: relative; opacity: 1; }
+    .btn.loading::after { content: ''; position: absolute; inset: 0; margin: auto;
+           width: 17px; height: 17px; border-radius: 50%;
+           border: 2px solid rgba(4,16,31,0.35); border-top-color: #04101f;
+           animation: btnspin .65s linear infinite; }
+    @keyframes btnspin { to { transform: rotate(360deg); } }
+    .hint { margin-top: 20px; font-size: 12px; opacity: 0.45; letter-spacing: 0.01em; }
+
+    .settings { pointer-events: auto; text-align: left; margin: 4px auto 24px; width: 100%;
+           display: flex; flex-direction: column; gap: 0; }
+    .srow { display: flex; align-items: center; justify-content: space-between; gap: 16px;
+           font-size: 14px; padding: 11px 0; border-bottom: 1px solid rgba(125,165,225,0.08); }
+    .srow label { opacity: 0.7; font-weight: 500; }
+    .tag-sp { font-size: 11px; font-weight: 600; color: #7fb0e0; opacity: 0.85; margin-left: 4px; }
+    .srow.speed { font-weight: 700; color: #7fdcff; font-size: 15px; margin-top: 6px;
+           padding-top: 16px; border-top: 1px solid rgba(125,165,225,0.14); border-bottom: none; }
+    .seg { display: flex; gap: 3px; background: rgba(255,255,255,0.04);
+           border: 1px solid rgba(125,165,225,0.12); border-radius: 11px; padding: 3px; }
+    .seg button { pointer-events: auto; cursor: pointer; border: none; background: none;
+           color: #aebede; border-radius: 8px; padding: 6px 13px; font-size: 13px; font-weight: 600;
+           font-family: inherit; transition: background .14s ease, color .14s ease; }
+    .seg button:hover { color: #eaf1ff; }
+    .seg button.sel { background: #37a0ff; color: #04101f; }
+    .srow.graphicsRow { display: block; }
+    .graphicsHead { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 9px; }
+    .graphicsHead label { opacity: 0.7; font-weight: 500; }
+    .graphicsChoice { display: flex; flex-direction: column; align-items: stretch; gap: 5px; }
+    .graphicsChoice .seg { justify-content: stretch; }
+    .graphicsChoice .seg button { flex: 1 1 0; padding-left: 9px; padding-right: 9px; white-space: nowrap; }
+    .linkbtn { pointer-events: auto; cursor: pointer; border: none; background: none;
+           color: #7fdcff; font: inherit; font-size: 12px; font-weight: 700; padding: 0; }
+    .linkbtn:hover { color: #eaf7ff; text-decoration: underline; }
+    .pickStatus { width: 100%; text-align: right; color: #9fb2d2; font-size: 11px; opacity: 0.72; min-height: 14px; }
+    .sliderwrap { display: flex; align-items: center; gap: 12px; }
+    .sliderwrap input[type=range] { width: 190px; height: 4px; accent-color: #37a0ff; cursor: pointer; }
+    .sliderwrap span { min-width: 56px; text-align: right; font-variant-numeric: tabular-nums;
+           font-weight: 600; color: #cfe0ff; }
+
+    /* ---------- Settings tabs (vertical sidebar: General / Controls / Garage) ---------- */
+    .settings-tabs { display: flex; flex-direction: column; gap: 4px; }
+    .stab { width: 100%; text-align: left; pointer-events: auto; cursor: pointer; border: none; background: none;
+           color: #aebede; border-radius: 10px; padding: 11px 14px; font-family: inherit; font-size: 15px;
+           font-weight: 600; transition: background .14s ease, color .14s ease; }
+    .stab:hover { color: #eaf1ff; background: rgba(125,165,225,0.08); }
+    .stab.sel { background: #37a0ff; color: #04101f; font-weight: 700; }
+    .settings-panel.hidden { display: none; }
+    .loadPreviewWrap { width: 100%; height: 200px; border-radius: 12px; overflow: hidden; background: radial-gradient(circle at 50% 35%, #1c2230, #0e1218); }
+    .loadPreviewWrap canvas { width: 100%; height: 100%; display: block; }
+    .loadFlipRow { display: flex; gap: 10px; }
+    .loadLinkLabel { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+
+    /* keybind rows */
+    .kb-group-title { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: #7f93b6;
+           opacity: .85; margin: 16px 0 2px; font-weight: 700; }
+    .kb-group-title:first-child { margin-top: 4px; }
+    .kb-row { display: flex; align-items: center; justify-content: space-between; gap: 14px;
+           font-size: 14px; padding: 9px 0; border-bottom: 1px solid rgba(125,165,225,0.08); }
+    .kb-row label { opacity: .7; font-weight: 500; }
+    .kb-binds { display: flex; gap: 6px; align-items: center; }
+    .keycap { pointer-events: auto; cursor: pointer; min-width: 58px; text-align: center;
+           border: 1px solid rgba(125,165,225,0.2); background: rgba(255,255,255,0.05); color: #cfe0ff;
+           border-radius: 8px; padding: 6px 11px; font-family: inherit; font-size: 13px; font-weight: 700;
+           transition: border-color .14s, background .14s, color .14s; }
+    .keycap:hover { border-color: #7fdcff; color: #eaf7ff; }
+    .keycap.capturing { background: #37a0ff; color: #04101f; border-color: transparent; }
+    .keycap.locked { opacity: .45; cursor: default; }
+    .keycap.locked:hover { border-color: rgba(125,165,225,0.2); color: #cfe0ff; }
+    .kb-note { color: #ffb38a; font-size: 11px; opacity: .9; min-height: 15px; margin: 4px 0 2px; }
+    .kb-preset-row { margin-bottom: 4px; }
+
+    /* garage */
+    .garage-preview-wrap { width: 100%; height: 210px; border-radius: 14px; overflow: hidden; position: relative;
+           background: radial-gradient(120% 120% at 50% 28%, #1b2230, #0c0f16);
+           border: 1px solid rgba(125,165,225,0.12); margin-bottom: 14px; }
+    .garage-preview-wrap canvas { width: 100%; height: 100%; display: block; cursor: grab; }
+    .garage-preview-wrap canvas:active { cursor: grabbing; }
+    .garage-hint { position: absolute; bottom: 8px; left: 0; right: 0; text-align: center; font-size: 11px;
+           color: #7f93b6; opacity: .7; pointer-events: none; }
+    .swatch-row { display: flex; flex-direction: column; gap: 9px; padding: 11px 0;
+           border-bottom: 1px solid rgba(125,165,225,0.08); }
+    .swatch-row > label { opacity: .7; font-weight: 500; font-size: 14px; }
+    .swatches { display: flex; gap: 7px; flex-wrap: wrap; align-items: center; }
+    .swatch { width: 24px; height: 24px; border-radius: 7px; cursor: pointer; pointer-events: auto;
+           border: 2px solid transparent; box-shadow: 0 0 0 1px rgba(0,0,0,.35) inset; transition: transform .1s ease; }
+    .swatch:hover { transform: scale(1.13); }
+    .swatch.sel { border-color: #fff; }
+    .swatch-custom { width: 30px; height: 24px; padding: 0; border: 1px solid rgba(125,165,225,.3);
+           border-radius: 7px; background: none; cursor: pointer; pointer-events: auto; }
+    .accessory-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; padding: 10px 0; }
+    .acc-btn { pointer-events: auto; cursor: pointer; border: 1px solid rgba(125,165,225,0.16);
+           background: rgba(255,255,255,0.04); color: #aebede; border-radius: 9px; padding: 9px;
+           font-family: inherit; font-size: 13px; font-weight: 600; transition: background .14s, color .14s, border-color .14s; }
+    .acc-btn:hover { color: #eaf1ff; border-color: #7fdcff; }
+    .acc-btn.sel { background: #37a0ff; color: #04101f; border-color: transparent; }
+
+    /* ---------- Menu / shell screens ---------- */
+    .logo-blank { width: min(446px, 82vw); aspect-ratio: 2230 / 781;
+           background: url('/images/logo-ui.png') center / contain no-repeat; }
+
+    #loadingScreen { background: #0b0e14; flex-direction: column; gap: 24px; }
+    #loadingScreen .loading-txt { font-size: 15px; letter-spacing: 3px; text-transform: uppercase;
+           opacity: 0.7; animation: loadPulse 1.2s ease-in-out infinite; }
+    @keyframes loadPulse { 0%,100% { opacity: 0.3 } 50% { opacity: 0.85 } }
+
+    /* home + play menus sit over the live field, anchored to the corners */
+    .menu { background: linear-gradient(to right,
+           rgba(6,9,15,0.64) 0%, rgba(6,9,15,0.49) 12%, rgba(6,9,15,0.25) 25%,
+           rgba(6,9,15,0.08) 37%, rgba(6,9,15,0) 48%); }
+    .menu .home-logo { position: absolute; top: 44px; left: 56px; width: min(432px, 46vw); aspect-ratio: 2230 / 781;
+           background: url('/images/logo-ui.png') center / contain no-repeat; }
+    .menu .social { position: absolute; top: 48px; right: 56px; display: flex; align-items: center; gap: 20px; }
+    .menu .social a { pointer-events: auto; cursor: pointer; color: #ccd6e6; opacity: 0.85; display: flex;
+           transition: opacity .12s, transform .12s, color .12s; }
+    .menu .social a:hover { opacity: 1; color: #fff; transform: scale(1.1); }
+    .menu .social svg { width: 26px; height: 26px; fill: currentColor; }
+    /* leaderboard button: labeled pill, leftmost item in the social row */
+    .menu .social .lb-btn { pointer-events: auto; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
+           padding: 7px 15px 7px 12px; border-radius: 999px; border: 1px solid rgba(125,165,225,0.30);
+           background: rgba(255,255,255,0.05); color: #ccd6e6; opacity: 0.9; font: 700 14px var(--ui-font);
+           letter-spacing: 0.01em; transition: opacity .12s, transform .12s, color .12s, border-color .12s, background .12s; }
+    .menu .social .lb-btn svg { width: 19px; height: 19px; fill: currentColor; }
+    .menu .social .lb-btn:hover { opacity: 1; color: #fff; border-color: #7fdcff;
+           background: rgba(127,220,255,0.12); transform: scale(1.04); }
+    .menu .version { position: absolute; right: 42px; bottom: 30px; font-size: 18px; font-weight: 800;
+           letter-spacing: 0.5px; opacity: 0.85; }
+    /* live online-player count: a small glassy pill with a pulsing "live" dot; shown only when > 10.
+       JS toggles display to inline-flex (see updateOnlineCount) so the dot + text sit inline. */
+    .menu .online-count { position: absolute; right: 42px; bottom: 60px; display: none;
+           align-items: center; gap: 7px; pointer-events: none;
+           padding: 5px 12px 5px 10px; border-radius: 999px;
+           font-size: 12.5px; font-weight: 650; letter-spacing: 0.2px; color: #e2eaf4;
+           background: rgba(14, 20, 30, 0.55); border: 1px solid rgba(127, 220, 255, 0.22);
+           box-shadow: 0 2px 12px rgba(0, 0, 0, 0.28);
+           backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px); }
+    .menu .online-count::before { content: ''; width: 7px; height: 7px; border-radius: 50%;
+           background: #46e08a; box-shadow: 0 0 7px rgba(70, 224, 138, 0.85);
+           animation: onlinePulse 2.4s ease-in-out infinite; }
+    @keyframes onlinePulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.85); } }
+    @media (prefers-reduced-motion: reduce) { .menu .online-count::before { animation: none; } }
+    .menu-title { position: absolute; left: 58px; font-size: 16px; font-weight: 700; letter-spacing: 4px;
+           text-transform: uppercase; opacity: 0.55; }
+    .menu-list { position: absolute; left: 56px; bottom: 96px; display: flex; flex-direction: column;
+           align-items: flex-start; gap: 4px; }
+    .menu-list .item { pointer-events: auto; cursor: pointer; background: none; border: none;
+           color: #f2f6ff; font-family: inherit; font-size: 40px; font-weight: 600; line-height: 1.3;
+           letter-spacing: 0.5px; opacity: 0.78; padding: 2px 0; text-align: left;
+           transition: opacity .12s, transform .12s, color .12s; }
+    .menu-list .item:hover { opacity: 1; color: #7fdcff; transform: translateX(7px) scale(1.04); }
+    .menu-list .item small { display: block; font-size: 13px; font-weight: 600; opacity: 0.55;
+           letter-spacing: 1.5px; text-transform: uppercase; }
+    /* Level Up settings-page options (injected into #spPanel while active) */
+    .lu-opts { display: flex; flex-direction: column; gap: 2px; margin-bottom: 18px; }
+    .lu-opts .mrow label small { display: block; font-size: 11px; opacity: 0.55; font-weight: 600; }
+    .lu-loads { display: flex; gap: 6px; flex-wrap: wrap; }
+    .lu-chip { width: 26px; height: 26px; border-radius: 7px; cursor: pointer;
+           border: 2px solid rgba(255,255,255,0.22); padding: 0; transition: transform .1s; }
+    .lu-chip:hover { transform: scale(1.12); cursor: grab; }
+    .lu-chip.dragging { opacity: 0.35; }
+    .lu-chip.red { background: #e14b4b; }
+    .lu-chip.blue { background: #3b82f6; }
+    /* grayed-out "coming soon" modes (Level Up multiplayer / teamwork) */
+    .menu-list .item.soon { opacity: 0.28; cursor: default; }
+    .menu-list .item.soon:hover { opacity: 0.28; color: #f2f6ff; transform: none; }
+    .menu-list .item.back { font-size: 22px; opacity: 0.6; margin-top: 18px; }
+    .menu-list .item.back:hover { color: #fff; }
+
+    /* profile tab (top-right of home) + overlay */
+    .menu .social { right: 132px; }   /* make room for the profile avatar at the corner */
+    .profile-tab { position: absolute; top: 42px; right: 56px; width: 46px; height: 46px;
+           pointer-events: auto; cursor: pointer; padding: 0; border-radius: 50%;
+           border: 2px solid rgba(150,180,230,0.45); background: rgba(255,255,255,0.05);
+           overflow: hidden; transition: transform .12s, border-color .12s; }
+    .profile-tab:hover { transform: scale(1.07); border-color: #7fdcff; }
+    .profile-tab.hidden { display: none; }
+    .profile-tab img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    /* blank-circle fallback: first letter of the username on a hued disc */
+    .pf-initial { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+           font-weight: 800; font-size: 20px; color: #04101f; }
+
+    #profileScreen { background: rgba(5,8,13,0.55); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+    .profile-card { pointer-events: auto; position: relative; width: min(760px, 100%); max-height: 88vh; overflow-y: auto;
+           text-align: left; padding: 30px 34px 34px;
+           background: linear-gradient(180deg, rgba(22,29,44,0.97), rgba(11,15,24,0.98));
+           border: 1px solid rgba(125,165,225,0.17); border-radius: 18px;
+           box-shadow: 0 30px 90px rgba(0,0,0,0.56), inset 0 1px 0 rgba(255,255,255,0.055); }
+    .pf-close { position: absolute; top: 16px; right: 18px; width: 34px; height: 34px; border-radius: 9px;
+           border: 1px solid rgba(125,165,225,0.18); background: rgba(125,165,225,0.08); color: #cfe0ff;
+           font-size: 20px; line-height: 1; cursor: pointer; pointer-events: auto; }
+    .pf-close:hover { background: rgba(125,165,225,0.16); }
+    .pf-login { text-align: center; padding: 28px 10px 14px; }
+    .pf-login p { opacity: 0.6; font-size: 14px; margin-bottom: 22px; }
+    .btn.discord { background: #5865F2; color: #fff; margin: 0 auto; }
+    .btn.discord:hover { background: #6c78ff; }
+
+    .pf-logout { position: absolute; top: 20px; left: 22px; font-size: 13px; }
+    .pf-head { display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 18px; margin: 6px 0 22px; }
+    .pf-headtext { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; min-width: 0; }
+    .pf-avatar { width: 64px; height: 64px; border-radius: 50%; overflow: hidden; flex: none;
+           border: 2px solid rgba(150,180,230,0.4); background: rgba(255,255,255,0.05); }
+    .pf-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .pf-avatar .pf-initial { font-size: 26px; }
+    .pf-name { font-size: 30px; font-weight: 700; letter-spacing: -0.01em; display: flex; align-items: baseline; gap: 10px; }
+    .pf-name .linkbtn { font-size: 13px; }
+    .pf-handle { font-size: 14px; opacity: 0.5; }
+    .pf-edit { margin: 14px 0 4px; padding: 14px; border: 1px solid rgba(125,165,225,0.14);
+           border-radius: 12px; background: rgba(255,255,255,0.03); display: none; }
+    .pf-edit.show { display: block; }
+    .pf-edit .erow { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
+    .pf-edit .erow:last-child { margin-bottom: 0; }
+    .pf-edit label { width: 86px; font-size: 13px; opacity: 0.7; flex: none; }
+    .pf-edit input { flex: 1; min-width: 0; border: 1px solid rgba(125,165,225,0.20); border-radius: 9px;
+           background: rgba(255,255,255,0.06); color: #eaf1ff; font: 400 14px var(--ui-font); padding: 9px 11px; outline: none; }
+    .pf-edit input:focus { border-color: rgba(127,220,255,0.62); }
+    .pf-note { font-size: 12px; min-height: 16px; margin-top: 2px; }
+    .pf-note.err { color: #ffb8b8; }
+    .pf-note.ok { color: #7CFFB0; }
+
+    /* one bordered container, 5 columns with hairline dividers (mirrors the reference) */
+    .pf-statbar { display: flex; margin: 4px 0 28px; border: 1px solid rgba(125,165,225,0.16);
+           border-radius: 14px; background: rgba(255,255,255,0.025); overflow: hidden; }
+    .pf-statbar .pf-stat { flex: 1; text-align: center; padding: 16px 6px;
+           border-left: 1px solid rgba(125,165,225,0.10); }
+    .pf-statbar .pf-stat:first-child { border-left: none; }
+    .pf-stat .n { font-size: 24px; font-weight: 750; font-variant-numeric: tabular-nums; line-height: 1; }
+    .pf-stat .l { font-size: 11px; opacity: 0.5; letter-spacing: 0.01em; margin-top: 7px; }
+
+    .pf-section-title { color: rgba(234,241,255,0.72); font-size: 12px; font-weight: 700;
+           letter-spacing: 0.05em; text-transform: uppercase; margin: 4px 0 12px; }
+    .contrib-wrap { width: 100%; max-width: 633px; }
+    .contrib-months { display: flex; justify-content: space-between; font-size: 11px; opacity: 0.45;
+           margin-top: 6px; padding: 0 1px; }
+    /* stacked section: insights (2x2) on top, friends full-width below */
+    .pf-cols { display: flex; flex-direction: column; gap: 30px; margin-top: 26px; }
+    .pf-igrid { display: grid; grid-template-columns: 1fr 1fr; column-gap: 30px; }
+    @media (max-width: 620px) { .pf-cols { gap: 22px; } .pf-igrid { grid-template-columns: 1fr; } }
+    .pf-irow { display: flex; align-items: center; justify-content: space-between;
+           padding: 11px 0; border-bottom: 1px solid rgba(125,165,225,0.08); font-size: 14px; }
+    .pf-irow span { opacity: 0.62; }
+    .pf-irow b { font-weight: 700; font-variant-numeric: tabular-nums; }
+    .pf-irow b.mode { text-transform: capitalize; color: #7fdcff; }
+    .contrib { display: grid; grid-auto-flow: column; grid-auto-columns: 9px;
+           grid-template-rows: repeat(7, 9px); gap: 3px; width: 633px; max-width: 100%; }
+    .sq { display: block; width: 9px; height: 9px; border-radius: 2px;
+           background: rgba(255,255,255,0.055); }
+    .sq.l1 { background: #123522; } .sq.l2 { background: #1b5b36; }
+    .sq.l3 { background: #277846; } .sq.l4 { background: #328f55; }
+    .contrib-legend { display: flex; align-items: center; gap: 5px; justify-content: flex-end;
+           font-size: 11px; opacity: 0.6; margin-top: 10px; }
+    .contrib-legend .sq { width: 11px; height: 11px; flex: none; }
+
+    .pf-friends { margin-top: 0; }
+    .pf-friends .tabs { display: flex; gap: 4px; margin-bottom: 12px; }
+    .pf-friends .tabs button { pointer-events: auto; cursor: pointer; border: none; background: rgba(255,255,255,0.04);
+           color: #aebede; border-radius: 9px; padding: 7px 14px; font: 600 13px var(--ui-font); }
+    .pf-friends .tabs button.sel { background: #37a0ff; color: #04101f; }
+    .pf-addfriend { display: flex; gap: 8px; margin-bottom: 14px; }
+    .pf-addfriend input { flex: 1; min-width: 0; border: 1px solid rgba(125,165,225,0.20); border-radius: 9px;
+           background: rgba(255,255,255,0.06); color: #eaf1ff; font: 400 14px var(--ui-font); padding: 9px 11px; outline: none; }
+    .pf-addfriend input:focus { border-color: rgba(127,220,255,0.62); }
+    .friend-row { display: flex; align-items: center; gap: 11px; padding: 9px 4px;
+           border-bottom: 1px solid rgba(125,165,225,0.08); }
+    .friend-row .av { width: 34px; height: 34px; border-radius: 50%; overflow: hidden; flex: none;
+           border: 1px solid rgba(150,180,230,0.3); background: rgba(255,255,255,0.05); }
+    .friend-row .av img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .friend-row .nm { flex: 1; min-width: 0; font-size: 15px; font-weight: 600; }
+    .friend-row .dot { width: 9px; height: 9px; border-radius: 50%; background: #54607a; flex: none; }
+    .friend-row .dot.on { background: #45d97a; box-shadow: 0 0 7px rgba(69,217,122,0.7); }
+    .friend-row .linkbtn { font-size: 12px; }
+    .pf-empty { opacity: 0.5; font-size: 13px; padding: 12px 4px; }
+
+    /* sign-in screen (shown instead of the lobby when logged out) */
+    .signin-back { position: absolute; top: 32px; left: 32px; }
+    .signin-box { pointer-events: auto; text-align: center; display: flex; flex-direction: column;
+           align-items: center; gap: 26px; }
+    .signin-box h2 { font-size: clamp(26px, 4vw, 40px); font-weight: 700; letter-spacing: -0.01em; }
+    .btn.discord svg { width: 22px; height: 22px; }
+
+    /* online lobby */
+    #lobbyScreen { background: rgba(5,8,13,0.38); backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px);
+           padding: 32px clamp(28px, 5vw, 72px); align-items: center; justify-content: center; overflow-y: auto; }
+    .lobby-panel { pointer-events: auto; width: min(1180px, 100%); max-height: 100%;
+           display: grid; grid-template-columns: minmax(320px, 0.92fr) minmax(420px, 1.35fr); gap: 34px;
+           padding: 34px clamp(28px, 4vw, 48px);
+           background: linear-gradient(180deg, rgba(22,29,44,0.96), rgba(11,15,24,0.97));
+           border: 1px solid rgba(125,165,225,0.17); border-radius: 18px;
+           box-shadow: 0 30px 90px rgba(0,0,0,0.56), inset 0 1px 0 rgba(255,255,255,0.055);
+           overflow-y: auto; font-family: var(--ui-font); }
+    .lobby-panel button, .lobby-panel input { font-family: var(--ui-font); }
+    .lobby-left, .lobby-main { min-height: 0; display: flex; flex-direction: column; }
+    .lobby-left { gap: 18px; }
+    .lobby-main { padding-top: 8px; }
+    .lobby-back { pointer-events: auto; cursor: pointer; align-self: flex-start; border: 1px solid rgba(125,165,225,0.18);
+           border-radius: 10px; background: rgba(125,165,225,0.08); color: #eaf1ff;
+           display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px 10px 12px;
+           font: 600 17px var(--ui-font); transition: background .14s ease, border-color .14s ease, transform .06s ease; }
+    .lobby-back:hover { background: rgba(125,165,225,0.14); border-color: rgba(125,165,225,0.34); }
+    .lobby-back:active { transform: translateY(1px); }
+    .lobby-back svg { width: 20px; height: 20px; }
+    .lobby-panel h2 { font-size: clamp(38px, 5vw, 58px); font-weight: 650; letter-spacing: 0;
+           line-height: 0.98; margin: 4px 0 10px; }
+    .lobby-actions { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 4px; }
+    .join-row { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; }
+    .join-row input { width: 100%; min-width: 0; border: 1px solid rgba(125,165,225,0.20);
+           border-radius: 11px; background: rgba(255,255,255,0.06); color: #eaf1ff;
+           font: 400 18px var(--ui-font); letter-spacing: 0; text-transform: none;
+           padding: 0 13px; outline: none; }
+    .join-row input:focus { border-color: rgba(127,220,255,0.62); }
+    .lobby-section { display: flex; flex-direction: column; min-height: 0; }
+    .lobby-section-title { color: rgba(234,241,255,0.72); font-size: 13px; font-weight: 650;
+           letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 10px; }
+    .lobby-divider { height: 1px; background: rgba(125,165,225,0.13); margin: 4px 0 16px; }
+    .lobby-head { display: flex; align-items: center; justify-content: space-between; gap: 12px;
+           padding: 0 0 12px; color: rgba(234,241,255,0.66); }
+    .room-list { display: flex; flex-direction: column; gap: 8px; min-height: 0; overflow-y: auto; padding-right: 4px; }
+    .room-row { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 8px;
+           padding: 12px; border: 1px solid rgba(125,165,225,0.14); border-radius: 10px;
+           background: rgba(255,255,255,0.045); }
+    .room-row .meta { min-width: 0; text-align: left; }
+    .room-row .code { font-size: 18px; font-weight: 650; letter-spacing: 0.08em; }
+    .room-row .count { font-size: 12px; opacity: 0.62; margin-top: 2px; }
+    .room-empty { opacity: 0.55; font-size: 14px; text-align: left; padding: 14px 0; }
+    .lobby-status { min-height: 20px; color: #ffb8b8; font-size: 13px; font-weight: 700;
+           text-align: left; margin-top: 2px; }
+    @media (max-width: 860px) {
+      #lobbyScreen { padding: 22px; }
+      .lobby-panel { grid-template-columns: 1fr; overflow-y: auto; }
+      .lobby-main { min-height: 220px; }
+      .join-row { grid-template-columns: 1fr; }
+    }
+
+    /* games menu */
+    #gamesScreen { background: rgba(5,8,13,0.38); backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px);
+           padding: 32px clamp(28px, 5vw, 72px); align-items: center; justify-content: center; overflow-y: auto; }
+    .games-panel { pointer-events: auto; width: min(1180px, 100%); max-height: 100%; min-height: 0;
+           display: flex; flex-direction: column; gap: 22px;
+           padding: 34px clamp(28px, 4vw, 48px);
+           background: linear-gradient(180deg, rgba(22,29,44,0.96), rgba(11,15,24,0.97));
+           border: 1px solid rgba(125,165,225,0.17); border-radius: 18px;
+           box-shadow: 0 30px 90px rgba(0,0,0,0.56), inset 0 1px 0 rgba(255,255,255,0.055);
+           overflow-y: auto; font-family: var(--ui-font); }
+    .games-grid { min-height: 0; overflow-y: auto; padding-right: 4px;
+           display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .game-card { position: relative; min-height: 260px; border-radius: 14px; overflow: hidden; cursor: pointer;
+           border: none;
+           background: linear-gradient(135deg, rgba(127,220,255,0.16), rgba(55,160,255,0.045)),
+                       url('/images/override.png') center / cover no-repeat,
+                       linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.018));
+           transition: transform .06s ease, box-shadow .14s ease; }
+    .game-card:hover { box-shadow: 0 12px 34px rgba(0,0,0,0.42); }
+    .game-card:active { transform: translateY(1px); }
+    .game-card::after { content: ""; position: absolute; inset: 0;
+           background: linear-gradient(180deg, rgba(5,8,13,0.02) 35%, rgba(5,8,13,0.74) 100%); }
+    .game-name { position: absolute; left: 22px; bottom: 20px; z-index: 1;
+           color: #f2f6ff; font-size: clamp(28px, 3.8vw, 46px); font-weight: 700; line-height: 1; }
+    .game-card:has(.game-sub) .game-name { bottom: 42px; }
+    .game-sub { position: absolute; left: 22px; bottom: 18px; z-index: 1;
+           color: rgba(234,241,255,0.62); font-size: 13px; font-weight: 600; }
+    .game-badge { position: absolute; top: 16px; right: 16px; z-index: 1;
+           padding: 4px 11px; border-radius: 999px; font-size: 11px; font-weight: 700;
+           letter-spacing: 0.04em; text-transform: uppercase; color: #cdefff;
+           background: rgba(6,10,18,0.82); border: 1px solid rgba(127,220,255,0.45); }
+    @media (max-width: 760px) {
+      #gamesScreen { padding: 22px; }
+      .games-panel { padding: 24px; }
+      .games-grid { grid-template-columns: 1fr; }
+      .game-card { min-height: 220px; }
+    }
+
+    /* online room: settings (left) + invite code & roster (right) */
+    #roomScreen { background: rgba(5,8,13,0.44); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+           padding: 28px; align-items: center; justify-content: center; overflow-y: auto; }
+    .room-panel { width: min(900px, 100%); height: auto; align-self: center; max-height: 90vh;
+           grid-template-columns: 1fr 1.12fr; gap: 30px; padding: 26px 30px 28px; }
+    .room-left { gap: 12px; min-height: 0; }
+    .room-left h2 { font-size: clamp(28px, 4.5vw, 38px); font-weight: 700; margin: 0 0 2px; }
+    .room-settings { display: flex; flex-direction: column; }
+    .rrow { display: flex; align-items: center; justify-content: space-between; gap: 16px;
+           padding: 15px 0; border-bottom: 1px solid rgba(125,165,225,0.10); }
+    .rrow:first-child { padding-top: 6px; }
+    .rrow > label { font-size: 17px; font-weight: 600; color: #eaf1ff; }
+    /* stacked row: label on top, control (e.g. the robot cards) below it */
+    .rrow.rrow-stack { flex-direction: column; align-items: stretch; gap: 10px; }
+    .rrow.rrow-stack > label { font-size: 15px; font-weight: 700; letter-spacing: 0.03em;
+           text-transform: uppercase; opacity: 0.6; }
+    #roomRobotCardsMount { display: flex; }
+    .room-left .seg { padding: 3px; }
+    .room-left .seg button { font-size: 14px; padding: 8px 18px; font-weight: 600; }
+    .room-foot { margin-top: auto; padding-top: 18px; }
+    .room-foot .btn { width: 100%; padding: 15px 0; font-size: 20px; font-weight: 800; }
+    .room-wait { text-align: center; opacity: 0.55; font-size: 14px; font-weight: 500; padding: 15px 0; }
+    .room-main { gap: 18px; min-height: 0; overflow: visible; padding-right: 2px; }
+    .room-codecard { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 16px;
+           padding: 14px 18px; border: 1px solid rgba(125,165,225,0.16); border-radius: 14px;
+           background: linear-gradient(135deg, rgba(127,220,255,0.10), rgba(55,160,255,0.04)); }
+    .room-code-label { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(234,241,255,0.5); }
+    .room-code { font-size: 30px; font-weight: 800; line-height: 1.1; color: #eaf1ff; }
+    .room-copy { flex: none; padding: 10px 15px; font-size: 14px; display: inline-flex; align-items: center; gap: 7px; }
+    .room-copy svg { width: 16px; height: 16px; }
+    .room-section { display: flex; flex-direction: column; }
+    .room-section .lobby-section-title { display: flex; align-items: center; gap: 8px; margin-bottom: 9px; }
+    .room-section .lobby-section-title span { opacity: 0.5; font-weight: 600; letter-spacing: 0; text-transform: none; }
+    /* competitors = 2x2 alliance grid (Red col / Blue col, rows = position 1/2) */
+    .team-heads { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 6px; }
+    .team-head { font-size: 12px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; padding-left: 4px; }
+    .team-head.red { color: #ff8f8f; }
+    .team-head.blue { color: #92bcff; }
+    .team-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .cell { min-height: 58px; display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+           border: 1px solid rgba(125,165,225,0.14); border-radius: 13px; background: rgba(255,255,255,0.035);
+           transition: border-color .12s, background .12s; }
+    .cell.red { background: rgba(226,58,58,0.07); border-color: rgba(226,58,58,0.18); }
+    .cell.blue { background: rgba(58,124,226,0.08); border-color: rgba(58,124,226,0.22); }
+    .cell.empty { justify-content: center; border-style: dashed; color: rgba(234,241,255,0.35); font-size: 13px; font-weight: 500; }
+    .cell.mine { box-shadow: inset 0 0 0 1.5px rgba(127,220,255,0.55); }
+    .cell.drop { border-style: solid; border-color: #7fdcff; background: rgba(127,220,255,0.14); }
+    .person { display: flex; align-items: center; gap: 10px; flex: 1 1 auto; min-width: 0; }
+    .person[draggable=true] { cursor: grab; }
+    .person.dragging { opacity: 0.45; }
+    .grip { flex: none; display: flex; cursor: grab; color: rgba(234,241,255,0.4); touch-action: none; }
+    .grip:active { cursor: grabbing; }
+    .grip svg { width: 14px; height: 20px; }
+    .rost-av { width: 34px; height: 34px; border-radius: 50%; flex: none; display: grid; place-items: center;
+           font-size: 14px; font-weight: 700; color: #06101e; overflow: hidden; }
+    .rost-av img { width: 100%; height: 100%; object-fit: cover; }
+    .rost-name { font-size: 15px; font-weight: 600; color: #eaf1ff; min-width: 0;
+           overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .rost-host { flex: none; font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+           color: #ffd479; border: 1px solid rgba(255,200,90,0.4); border-radius: 999px; padding: 2px 7px; }
+    .rost-spacer { flex: 1 1 auto; }
+    .spec-zone { display: flex; flex-direction: column; gap: 7px; min-height: 46px; border-radius: 13px;
+           border: 1px dashed transparent; transition: border-color .12s, background .12s; }
+    .spec-zone.drop { border-color: #7fdcff; background: rgba(127,220,255,0.10); }
+    .rost-row { display: flex; align-items: center; gap: 11px; padding: 9px 12px;
+           border: 1px solid rgba(125,165,225,0.12); border-radius: 12px; background: rgba(255,255,255,0.035); }
+    .rost-empty { opacity: 0.4; font-size: 14px; padding: 8px 2px; }
+    .spec-join { align-self: flex-start; margin-top: 2px; padding: 8px 16px; cursor: pointer;
+           font: 500 14px var(--ui-font); color: #cfe0ff; border-radius: 10px;
+           border: 1px solid rgba(125,165,225,0.30); background: rgba(255,255,255,0.05);
+           transition: background .12s, border-color .12s; }
+    .spec-join:hover { background: rgba(127,220,255,0.12); border-color: #7fdcff; }
+    /* "+" add-friend affordance on roster + results cards */
+    .rost-add { margin-left: auto; flex: none; width: 24px; height: 24px; border-radius: 50%;
+           display: grid; place-items: center; font: 700 16px var(--ui-font); line-height: 1;
+           color: #cfe0ff; cursor: pointer; border: 1px solid rgba(125,165,225,0.35);
+           background: rgba(255,255,255,0.05); transition: background .12s, border-color .12s, color .12s; }
+    .rost-add:hover { background: rgba(127,220,255,0.16); border-color: #7fdcff; color: #eaf1ff; }
+    .rost-add:disabled { cursor: default; color: #45d97a; border-color: rgba(69,217,122,0.5); }
+    /* invite-friends list in the room screen */
+    .invite-list { display: flex; flex-direction: column; gap: 7px; }
+    .invite-row { display: flex; align-items: center; gap: 11px; padding: 8px 12px;
+           border: 1px solid rgba(125,165,225,0.12); border-radius: 12px; background: rgba(255,255,255,0.035); }
+    .invite-av { width: 30px; height: 30px; border-radius: 50%; overflow: hidden; flex: none; display: grid; place-items: center; }
+    .invite-av img { width: 100%; height: 100%; object-fit: cover; }
+    .invite-nm { flex: 1; min-width: 0; font-size: 14px; font-weight: 600; color: #eaf1ff;
+           overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .invite-btn { flex: none; padding: 6px 14px; font-size: 13px; }
+    /* friend's-room badge in the lobby list */
+    .room-friend { margin-left: 9px; font-size: 11px; font-weight: 700; letter-spacing: 0.02em;
+           color: #45d97a; border: 1px solid rgba(69,217,122,0.4); border-radius: 999px; padding: 1px 8px;
+           vertical-align: middle; white-space: nowrap; }
+
+    /* skills leaderboard: single-column ranked list, paged 10 at a time */
+    #leaderboardScreen { background: rgba(5,8,13,0.44); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+           padding: 28px; align-items: center; justify-content: center; }
+    .lb-panel { display: flex; flex-direction: column; gap: 14px; width: min(620px, 100%); height: auto;
+           align-self: center; max-height: 90vh; padding: 26px 30px 24px; }
+    .lb-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .lb-copy { padding: 9px 15px; font-size: 14px; display: inline-flex; align-items: center; gap: 7px; }
+    .lb-copy svg { width: 16px; height: 16px; fill: currentColor; }
+    .lb-panel h2 { font-size: clamp(30px, 4.5vw, 42px); margin: 2px 0 4px; }
+    .lb-gamesel { display: flex; gap: 8px; }
+    .lb-gamesel button { flex: 1; padding: 9px 0; border-radius: 11px; cursor: pointer; font: 700 14px var(--ui-font);
+           border: 1px solid rgba(125,165,225,0.2); background: rgba(255,255,255,0.04); color: rgba(234,241,255,0.65); }
+    .lb-gamesel button:hover { background: rgba(255,255,255,0.09); }
+    .lb-gamesel button.on { border-color: rgba(127,220,255,0.65); background: rgba(127,220,255,0.14); color: #eaf1ff; }
+    .lb-rows { display: flex; flex-direction: column; gap: 8px; min-height: 0; overflow-y: auto;
+           padding-right: 4px; flex: 1 1 auto; }
+    .lb-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px;
+           border: 1px solid rgba(125,165,225,0.14); border-radius: 13px; background: rgba(255,255,255,0.035); }
+    .lb-row.mine { box-shadow: inset 0 0 0 1.5px rgba(127,220,255,0.55); }
+    .lb-rank { flex: none; width: 34px; text-align: center; font: 800 17px var(--ui-font);
+           color: rgba(234,241,255,0.55); font-variant-numeric: tabular-nums; }
+    .lb-row.top1 .lb-rank { color: #ffd479; }
+    .lb-row.top2 .lb-rank { color: #cfd8e8; }
+    .lb-row.top3 .lb-rank { color: #e0a06a; }
+    .lb-name { flex: 1 1 auto; min-width: 0; font-size: 15px; font-weight: 600; color: #eaf1ff;
+           overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lb-score { flex: none; font: 800 17px var(--ui-font); color: #eaf1ff; font-variant-numeric: tabular-nums; }
+    .lb-row .rost-add { margin-left: 0; }
+    .lb-empty { opacity: 0.55; font-size: 14px; text-align: center; padding: 30px 0; }
+    .lb-pager { display: flex; align-items: center; justify-content: center; gap: 16px; padding-top: 2px; }
+    .lb-pager .btn { padding: 9px 20px; font-size: 14px; }
+    .lb-pager .btn:disabled { opacity: 0.4; cursor: default; transform: none; }
+    #lbPageLabel { font-size: 14px; font-weight: 600; color: rgba(234,241,255,0.7);
+           min-width: 84px; text-align: center; font-variant-numeric: tabular-nums; }
+    @media (max-width: 820px), (max-height: 560px) {
+      #leaderboardScreen { padding: 16px; align-items: stretch; }
+      .lb-panel { width: 100%; height: 100%; max-height: none; }
+    }
+    /* narrow / short screens: one column, the whole panel scrolls, controls reflow */
+    @media (max-width: 820px), (max-height: 560px) {
+      #roomScreen { padding: 16px; align-items: stretch; }
+      .room-panel { grid-template-columns: 1fr; width: 100%; height: 100%; max-height: none;
+             gap: 18px; padding: 20px 20px 22px; overflow-y: auto; }
+      .room-left { gap: 10px; }
+      .room-foot { margin-top: 8px; }          /* don't strand Start at the far bottom when stacked */
+      .room-foot .btn { padding: 13px 0; font-size: 18px; }
+      .room-main { overflow: visible; }         /* the panel scrolls, not the inner column */
+      .rrow { padding: 12px 0; }
+    }
+    @media (max-width: 440px) {
+      .room-code { font-size: 26px; }
+      .room-copy { flex: 1 1 100%; justify-content: center; }   /* full-width copy under the code */
+      .rost-name { max-width: 50vw; }
+    }
+
+    /* results */
+    #resultsScreen .score { display: flex; justify-content: center; gap: 10px; margin: 14px 0 26px;
+           font-variant-numeric: tabular-nums; }
+    #resultsScreen .score .s { min-width: 90px; padding: 14px 18px; border-radius: 12px;
+           font-size: 44px; font-weight: 800; color: #fff; }
+    #resultsScreen .score .s.blue { background: #3a7ce2; }
+    #resultsScreen .score .s.red  { background: #e23a3a; }
+    /* post-match team rosters (with friend "+") */
+    .results-roster { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 0 0 22px; text-align: left; }
+    .results-roster:empty { display: none; }
+    .res-team { display: flex; flex-direction: column; gap: 7px; }
+    .res-team-h { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+           padding-bottom: 2px; }
+    .res-team.red .res-team-h { color: #ff8f8f; }
+    .res-team.blue .res-team-h { color: #8fb8ff; }
+    .res-person { display: flex; align-items: center; gap: 9px; padding: 7px 10px; border-radius: 11px;
+           border: 1px solid rgba(125,165,225,0.12); background: rgba(255,255,255,0.035); }
+    .res-av { width: 28px; height: 28px; border-radius: 50%; overflow: hidden; flex: none; display: grid; place-items: center; }
+    .res-av img { width: 100%; height: 100%; object-fit: cover; }
+    .res-nm { flex: 1; min-width: 0; font-size: 14px; font-weight: 600; color: #eaf1ff;
+           overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .res-empty { opacity: 0.4; font-size: 13px; padding: 6px 2px; }
+
+    /* settings: a centered modal card, consistent with the pause screen */
+    #settingsPage { padding: 24px; }
+    .page { width: 100%; max-width: 440px; max-height: 88vh; overflow-y: auto;
+           padding: 34px 36px 28px; text-align: center;
+           background: linear-gradient(180deg, rgba(21,28,44,0.96), rgba(12,16,26,0.97));
+           border: 1px solid rgba(125,165,225,0.16); border-radius: 22px;
+           box-shadow: 0 28px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06); }
+    .page h1 { font-size: 34px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.04; margin-bottom: 20px; }
+    .page .sub { opacity: 0.55; margin-bottom: 22px; font-size: 13px; font-weight: 500; letter-spacing: 0.02em; }
+
+    /* settings: sidebar + scrollable content, sized like the multiplayer panels */
+    .settings-card { width: min(900px, 100%); max-width: min(900px, 100%);
+           height: min(660px, 90vh); max-height: 90vh; padding: 0; text-align: left;
+           display: grid; grid-template-columns: 236px 1fr; overflow: hidden; }
+    .settings-side { display: flex; flex-direction: column; gap: 16px; padding: 30px 22px; min-height: 0;
+           border-right: 1px solid rgba(125,165,225,0.12);
+           background: linear-gradient(180deg, rgba(127,220,255,0.05), rgba(127,220,255,0)); }
+    .settings-side h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.04; margin: 0 0 8px; }
+    .settings-side .btn.ghost { margin-top: auto; width: 100%; }
+    .settings-content { overflow-y: auto; padding: 30px 32px 28px; min-height: 0; }
+    .settings-content .settings { margin: 0; }
+    /* subtle, inset scrollbar so the card's rounded corners stay clean */
+    .settings-content { scrollbar-width: thin; scrollbar-color: rgba(125,165,225,0.32) transparent; }
+    .settings-content::-webkit-scrollbar { width: 11px; }
+    .settings-content::-webkit-scrollbar-track { background: transparent; }
+    .settings-content::-webkit-scrollbar-thumb { background: rgba(125,165,225,0.3); border-radius: 999px;
+           border: 3px solid transparent; background-clip: padding-box; }
+    .settings-content::-webkit-scrollbar-thumb:hover { background: rgba(125,165,225,0.48); background-clip: padding-box; }
+    @media (max-width: 720px), (max-height: 540px) {
+      .settings-card { grid-template-columns: 1fr; width: 100%; height: 100%; max-height: none; }
+      .settings-side { border-right: none; border-bottom: 1px solid rgba(125,165,225,0.12); padding: 18px 20px; gap: 12px; }
+      .settings-tabs { flex-direction: row; }
+      .stab { text-align: center; }
+      .settings-side h1 { font-size: 24px; }
+      .settings-side .btn.ghost { margin-top: 0; }
+    }
+
+    /* garage: same card footprint as settings, but no sidebar — a header + scrollable body */
+    .garage-card { width: min(900px, 100%); max-width: min(900px, 100%);
+           height: min(660px, 90vh); max-height: 90vh; padding: 0; text-align: left;
+           display: flex; flex-direction: column; overflow: hidden; }
+    .garage-head { display: flex; align-items: center; gap: 16px; padding: 20px 28px;
+           border-bottom: 1px solid rgba(125,165,225,0.12);
+           background: linear-gradient(180deg, rgba(127,220,255,0.05), rgba(127,220,255,0)); }
+    .garage-head h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.04; margin: 0; }
+    .garage-head .btn.ghost { width: auto; padding: 9px 14px; }
+    @media (max-width: 720px), (max-height: 540px) {
+      .garage-card { width: 100%; height: 100%; max-height: none; }
+      .garage-head { padding: 16px 20px; }
+      .garage-head h1 { font-size: 24px; }
+    }
+
+    .btncol { display: flex; flex-direction: column; gap: 10px; width: 100%; margin: 4px auto 0; }
+    .btncol .btn { width: 100%; padding: 14px 0; }
+    .btn.ghost { background: transparent; border: 1px solid rgba(125,165,225,0.20);
+           color: #d6e2f5; font-weight: 600; }
+    .btn.ghost:hover { background: rgba(125,165,225,0.10); border-color: rgba(125,165,225,0.42); }
+
+    /* games menu */
+    #gamesScreen { background: rgba(5,8,13,0.38); backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px);
+           padding: 32px clamp(28px, 5vw, 72px); align-items: center; justify-content: center; overflow-y: auto; }
+    .games-panel { pointer-events: auto; width: min(1180px, 100%); max-height: 100%; min-height: 0;
+           display: flex; flex-direction: column; gap: 22px;
+           padding: 34px clamp(28px, 4vw, 48px);
+           background: linear-gradient(180deg, rgba(22,29,44,0.96), rgba(11,15,24,0.97));
+           border: 1px solid rgba(125,165,225,0.17); border-radius: 18px;
+           box-shadow: 0 30px 90px rgba(0,0,0,0.56), inset 0 1px 0 rgba(255,255,255,0.055);
+           overflow-y: auto; font-family: var(--ui-font); }
+    .games-back { pointer-events: auto; cursor: pointer; align-self: flex-start;
+           border: 1px solid rgba(125,165,225,0.18); border-radius: 10px;
+           background: rgba(125,165,225,0.08); color: #eaf1ff;
+           display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px 10px 12px;
+           font: 600 17px var(--ui-font); transition: background .14s ease, border-color .14s ease, transform .06s ease; }
+    .games-back:hover { background: rgba(125,165,225,0.14); border-color: rgba(125,165,225,0.34); }
+    .games-back:active { transform: translateY(1px); }
+    .games-back svg { width: 20px; height: 20px; }
+    .games-grid { min-height: 0; overflow-y: auto; padding-right: 4px;
+           display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .game-card { position: relative; min-height: 260px; border-radius: 14px; overflow: hidden; cursor: pointer;
+           border: none;
+           background: linear-gradient(135deg, rgba(127,220,255,0.16), rgba(55,160,255,0.045)),
+                       url('/images/override.png') center / cover no-repeat,
+                       linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.018));
+           transition: transform .06s ease, box-shadow .14s ease; }
+    .game-card:hover { box-shadow: 0 12px 34px rgba(0,0,0,0.42); }
+    .game-card:active { transform: translateY(1px); }
+    .game-card::after { content: ""; position: absolute; inset: 0;
+           background: linear-gradient(180deg, rgba(5,8,13,0.02) 35%, rgba(5,8,13,0.74) 100%); }
+    .game-name { position: absolute; left: 22px; bottom: 20px; z-index: 1;
+           color: #f2f6ff; font-size: clamp(28px, 3.8vw, 46px); font-weight: 700; line-height: 1; }
+    .game-card:has(.game-sub) .game-name { bottom: 42px; }
+    .game-sub { position: absolute; left: 22px; bottom: 18px; z-index: 1;
+           color: rgba(234,241,255,0.62); font-size: 13px; font-weight: 600; }
+    .game-badge { position: absolute; top: 16px; right: 16px; z-index: 1;
+           padding: 4px 11px; border-radius: 999px; font-size: 11px; font-weight: 700;
+           letter-spacing: 0.04em; text-transform: uppercase; color: #cdefff;
+           background: rgba(6,10,18,0.82); border: 1px solid rgba(127,220,255,0.45); }
+    @media (max-width: 760px) {
+      #gamesScreen { padding: 22px; }
+      .games-panel { padding: 24px; }
+      .games-grid { grid-template-columns: 1fr; }
+      .game-card { min-height: 220px; }
+    }
+
+    /* ---------- Match Settings (pre-run config) ---------- */
+    /* transparent backdrop so the live robot preview stays visible behind */
+    #matchConfigScreen { background: none; justify-content: flex-end; align-items: stretch; }
+    .backpill { position: absolute; top: 26px; left: 30px; z-index: 2; pointer-events: auto; cursor: pointer;
+           display: inline-flex; align-items: center; gap: 8px; padding: 12px 22px 12px 16px;
+           font-family: inherit; font-size: 22px; font-weight: 700; color: #eaf1ff;
+           background: rgba(34,44,70,0.94);
+           border: 1px solid rgba(125,165,225,0.22); border-radius: 14px;
+           box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+           transition: background .14s ease, transform .06s ease; }
+    .backpill:hover { background: rgba(48,60,92,0.95); }
+    .backpill:active { transform: translateY(1px); }
+    .backpill svg { width: 22px; height: 22px; }
+
+    .match-panel { pointer-events: auto; width: 38vw; max-width: 560px; min-width: 420px; height: 100%;
+           display: flex; flex-direction: column; padding: 40px 44px 36px;
+           background: linear-gradient(180deg, rgba(21,28,44,0.97), rgba(12,16,26,0.98));
+           border-left: 1px solid rgba(125,165,225,0.16);
+           box-shadow: -28px 0 80px rgba(0,0,0,0.5); overflow-y: auto; }
+    .match-panel h2 { font-size: 40px; font-weight: 800; letter-spacing: -0.01em; text-align: center;
+           margin-bottom: 28px; }
+    .mrows { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+    .mrow { display: flex; align-items: center; justify-content: space-between; gap: 20px;
+           padding: 16px 0; border-bottom: 1px solid rgba(125,165,225,0.10); }
+    .mrow > label { font-size: 22px; font-weight: 700; color: #eaf1ff; }
+    /* scale the shared segmented + slider controls up for this larger panel */
+    .match-panel .seg button { font-size: 17px; padding: 9px 18px; }
+    .match-panel .seg button[disabled] { opacity: 1; cursor: default; }
+    .match-panel .sliderwrap input[type=range] { width: 200px; height: 5px; }
+    .match-panel .sliderwrap span { font-size: 18px; min-width: 48px; color: #cfe0ff; }
+    .mc-customize { pointer-events: auto; cursor: pointer; border: 1px solid rgba(125,165,225,0.22);
+           background: rgba(125,165,225,0.08); color: #cfe6ff; border-radius: 10px;
+           padding: 9px 22px; font-family: inherit; font-size: 17px; font-weight: 700;
+           transition: background .14s ease, border-color .14s ease; }
+    .mc-customize:hover { background: rgba(125,165,225,0.16); border-color: rgba(125,165,225,0.45); }
+    .mc-start { width: 100%; margin-top: 24px; padding: 18px 0; font-size: 24px; font-weight: 800;
+           border-radius: 14px; }
+
+    /* ---------- Starting Position editor (live top-down: field left, panel right) ---------- */
+    /* transparent + panel pinned right, mirroring the Match Settings layout.
+       (the canvas is position:fixed, so the .overlay flex box only lays out the
+       panel — and we must NOT set `display` here, or this ID selector would beat
+       `.overlay.hidden { display:none }` and the editor could never be hidden.) */
+    #startPosScreen { z-index: 11; background: none; justify-content: flex-end; align-items: stretch; }
+    /* full-screen canvas behind the panel: the top-down 3D renders to it (framed
+       into the left region) and it draws the selection ring + rotate handle */
+    #startPosCanvas { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0;
+           touch-action: none; cursor: grab; }
+    #startPosCanvas:active { cursor: grabbing; }
+    /* the panel is position:fixed canvas's sibling; without its own stacking it
+       would paint UNDER the fixed (positioned) canvas and swallow every click. */
+    #spPanel { position: relative; z-index: 1; }
+    .sp-instr { font-size: 17px; opacity: 0.68; font-weight: 600; line-height: 1.55; margin-bottom: 22px; }
+    .sp-presets-lbl { font-size: 15px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+           opacity: 0.5; margin-bottom: 10px; }
+    .sp-presets { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 26px; }
+    .sp-preset { pointer-events: auto; cursor: pointer; border: 1px solid rgba(125,165,225,0.22);
+           background: rgba(125,165,225,0.07); color: #dcebff; border-radius: 10px;
+           padding: 12px 0; font-family: inherit; font-size: 16px; font-weight: 700;
+           transition: background .14s ease, border-color .14s ease; }
+    .sp-preset:hover { background: rgba(125,165,225,0.16); border-color: rgba(125,165,225,0.45); }
+    .sp-preset[data-team^="red"] { border-color: rgba(226,58,58,0.42); }
+    .sp-preset[data-team^="red"]:hover { background: rgba(226,58,58,0.16); }
+    .sp-preset[data-team^="blue"] { border-color: rgba(58,124,226,0.46); }
+    .sp-preset[data-team^="blue"]:hover { background: rgba(58,124,226,0.18); }
+    .sp-btncol { display: flex; flex-direction: column; gap: 12px; margin-top: auto; }
+    .sp-btncol .btn { width: 100%; padding: 15px 0; font-size: 18px; }
+    /* preload flip control in the match panel */
+    .mc-preload { display: flex; align-items: center; gap: 12px; }
+    .mc-preload .mc-pre-state { font-size: 16px; font-weight: 700; color: #cfe0ff; min-width: 84px; text-align: right; }
+
+    /* ---------- "Choose robot" card picker (prematch + MP room) ---------- */
+    /* Prematch: a low horizontal strip pinned to the bottom-left, stopping clear
+       of the right-hand settings panel. */
+    #mcRobotChooser { position: absolute; left: 30px; bottom: 36px; z-index: 1; pointer-events: auto;
+           right: clamp(444px, calc(38vw + 24px), 584px); }
+    .robot-chooser__title { font-size: 18px; font-weight: 800; letter-spacing: 0.01em; color: #eaf1ff;
+           margin: 0 0 12px 4px; text-shadow: 0 2px 10px rgba(0,0,0,0.6); }
+    .robot-cards { display: flex; gap: 14px; flex-wrap: wrap; }
+    .robot-cards.is-locked { opacity: 0.45; filter: grayscale(0.4); pointer-events: none; }
+    .robot-card { pointer-events: auto; cursor: pointer; width: 156px;
+           display: flex; flex-direction: column; align-items: center; gap: 6px;
+           padding: 10px 10px 12px; font-family: inherit;
+           background: rgba(24,32,52,0.92); border: 1.5px solid rgba(125,165,225,0.22);
+           border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+           transition: border-color .14s ease, background .14s ease, transform .06s ease; }
+    .robot-card:hover { background: rgba(36,48,76,0.95); border-color: rgba(125,165,225,0.45); }
+    .robot-card:active { transform: translateY(1px); }
+    .robot-card.is-selected { border-color: #5ad1ff; background: rgba(40,64,92,0.95);
+           box-shadow: 0 0 0 1px #5ad1ff, 0 10px 34px rgba(40,140,210,0.35); }
+    .robot-card__view { width: 100%; height: 104px; }
+    .robot-card__view canvas { width: 100%; height: 100%; display: block; }
+    .robot-card__name { font-size: 16px; font-weight: 700; color: #eaf1ff; text-align: center; }
+    /* Compact variant for the MP room settings column. */
+    .robot-cards--compact { gap: 10px; }
+    .robot-cards--compact .robot-card { width: 108px; padding: 7px 7px 9px; border-radius: 13px; gap: 4px; }
+    .robot-cards--compact .robot-card__view { height: 70px; }
+    .robot-cards--compact .robot-card__name { font-size: 13px; }
+
+    /* ---- Replays (Settings tab) ---- */
+    .replays-head { display: flex; align-items: center; gap: 12px; }
+    .replays-head label { flex: 1; }
+    .replay-list { display: flex; flex-direction: column; gap: 10px; max-height: 52vh; overflow-y: auto; }
+    .replay-empty { opacity: 0.55; font-size: 14px; padding: 18px 4px; }
+    .replay-item { display: flex; align-items: center; gap: 14px; padding: 12px 14px;
+           background: rgba(24,32,52,0.72); border: 1px solid rgba(125,165,225,0.16); border-radius: 12px; }
+    .replay-item__main { flex: 1; min-width: 0; }
+    .replay-item__name { font-size: 15px; font-weight: 700; color: #eaf1ff; background: transparent;
+           border: 1px solid transparent; border-radius: 7px; padding: 3px 6px; width: 100%; font-family: inherit; }
+    .replay-item__name:hover { border-color: rgba(125,165,225,0.24); }
+    .replay-item__name:focus { outline: none; border-color: rgba(125,165,225,0.55); background: rgba(0,0,0,0.25); }
+    .replay-item__meta { font-size: 12px; opacity: 0.6; margin-top: 3px; display: flex; gap: 10px; flex-wrap: wrap; }
+    .replay-score { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; font-size: 16px; }
+    .replay-score .sc { padding: 2px 9px; border-radius: 8px; }
+    .replay-score .sc.red { background: rgba(220,70,80,0.22); color: #ff9aa2; }
+    .replay-score .sc.blue { background: rgba(70,120,220,0.22); color: #9ab8ff; }
+    .replay-score .sc.solo { background: rgba(120,160,225,0.18); color: #cfe0ff; }
+    .replay-item__actions { display: flex; gap: 6px; }
+    .replay-iconbtn { cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 600; color: #dbe6ff;
+           background: rgba(60,76,116,0.7); border: 1px solid rgba(125,165,225,0.2); border-radius: 9px; padding: 7px 11px; }
+    .replay-iconbtn:hover { background: rgba(78,98,146,0.85); }
+    .replay-iconbtn.danger:hover { background: rgba(150,50,58,0.85); }
+
+    /* ---- Replay playback transport bar ---- */
+    .replay-bar { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 30;
+           display: flex; align-items: center; gap: 10px; padding: 10px 14px; pointer-events: auto;
+           background: rgba(20,28,46,0.92); border: 1px solid rgba(125,165,225,0.22); border-radius: 14px;
+           box-shadow: 0 12px 34px rgba(0,0,0,0.5); backdrop-filter: blur(6px);
+           font-family: var(--ui-font); color: #eaf1ff; width: min(720px, 94vw); box-sizing: border-box; }
+    .replay-bar.hidden { display: none; }
+    /* The bar + Back pill mount directly under <body>, which doesn't carry the app font,
+       so `inherit` on their children would fall back to serif — pin the font here. */
+    .replay-bar button, .replay-time, .replay-view { font-family: var(--ui-font); }
+    #replayBack.replay-back { font-family: var(--ui-font); }
+    .replay-bar button { box-sizing: border-box; height: 38px; display: inline-flex; align-items: center;
+           justify-content: center; cursor: pointer; font-family: inherit; font-weight: 700; color: #eaf1ff;
+           white-space: nowrap; background: rgba(60,76,116,0.8); border: 1px solid rgba(125,165,225,0.24);
+           border-radius: 9px; padding: 0 12px; font-size: 13px; line-height: 1; transition: background .12s ease; }
+    .replay-bar button:hover { background: rgba(80,100,150,0.9); }
+    .replay-bar .replay-play { width: 42px; padding: 0; font-size: 14px; }
+    .replay-seek { flex: 1; min-width: 60px; accent-color: #7da5e1; cursor: pointer; height: 6px; }
+    .replay-time { font-variant-numeric: tabular-nums; font-size: 13px; opacity: 0.85; min-width: 84px; text-align: center; }
+    .replay-speed { display: inline-flex; }
+    .replay-bar .replay-speed button { padding: 0 9px; font-size: 12px; color: #cdd9f2; margin-left: -1px;
+           background: rgba(40,52,80,0.8); border-color: rgba(125,165,225,0.18); border-radius: 0; }
+    .replay-bar .replay-speed button:first-child { border-radius: 9px 0 0 9px; margin-left: 0; }
+    .replay-bar .replay-speed button:last-child { border-radius: 0 9px 9px 0; }
+    .replay-bar .replay-speed button.sel { background: rgba(110,150,220,0.95); color: #fff; border-color: rgba(140,175,235,0.5); }
+    .replay-view { font-size: 12px; opacity: 0.7; min-width: 72px; text-align: center; white-space: nowrap; }
+    #replayBack.replay-back.hidden { display: none; }
+  </style>
+
+  <!-- Vercel Web Analytics (same-origin script; CSP script-src 'self' clean) -->
+  <script defer src="/_vercel/insights/script.js"></script>
+  <script type="module" crossorigin src="/assets/main-DU0EI9mN.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/modulepreload-polyfill-B5Qt9EMX.js">
+</head>
+<body>
+  <div id="app"></div>
+
+  <!-- Crawlable SEO content: visually hidden, but read by search engines and
+       served (with working nav links) to no-JS crawlers via <noscript>. -->
+  <div class="seo-content">
+    <h1>Vsimulator — Free Online VEX Robotics Competition Simulator</h1>
+    <p>Vsimulator is a free, browser-based VEX robotics competition simulator. Drive
+       your robot, score the field, and compete in singleplayer skills runs or live
+       real-time multiplayer matches — no download required.</p>
+    <noscript>
+      <nav aria-label="Sections">
+        <a href="/singleplayer">Singleplayer</a>
+        <a href="/multiplayer">Multiplayer</a>
+        <a href="/games">Games</a>
+      </nav>
+    </noscript>
+  </div>
+
+  <div id="hud">
+    <div id="endgameVignette"></div>
+    <div id="countdown"><span class="n">3</span></div>
+    <div id="scoreboard">
+      <div class="sb red"><span id="sbRed">0</span></div>
+      <div class="sb time"><span id="sbTime">2:00</span></div>
+      <div class="sb blue"><span id="sbBlue">0</span></div>
+    </div>
+
+    <div id="keys" class="panel">
+      <div id="keysList"></div>
+    </div>
+
+    <div id="statePanel" class="panel">
+      <div class="row"><span class="k">Transfer</span><span class="v" id="smState">EMPTY</span></div>
+      <div class="row"><span class="k">Alliance</span><span class="v"><span class="chip red" id="allianceChip">RED</span></span></div>
+      <div class="row"><span class="k">Claw</span><span class="v"><span class="chip off" id="clawChip">OPEN</span></span></div>
+      <div class="row"><span class="k">Aligner</span><span class="v"><span class="chip off" id="alignChip">—</span></span></div>
+    </div>
+
+    <div id="liftPanel" class="panel">
+      <div class="lbl">LIFT</div>
+      <div id="liftTrack"><div id="liftFill" style="height:0%"></div></div>
+      <div class="lbl" id="liftPct">0%</div>
+    </div>
+
+    <div id="prompt" class="panel">Back into a goal to auto-align</div>
+    <div id="intakeBar"><div id="intakeFill"></div></div>
+    <div id="perfCounter">
+      <div id="delayCounter">Delay --</div>
+      <div id="fpsCounter">FPS --</div>
+    </div>
+    <div id="toast" class="panel">Too high!</div>
+    <div id="scorePopups"></div>
+  </div>
+
+  <!-- shared social-icon + settings markup helpers are inlined below -->
+
+  <!-- LOADING: covers the empty canvas until physics + models are ready -->
+  <div id="loadingScreen" class="overlay">
+    <div class="logo-blank"></div>
+    <div class="loading-txt">Loading…</div>
+  </div>
+
+  <!-- HOME: main menu over the live field -->
+  <div id="homeScreen" class="overlay menu hidden">
+    <div class="home-logo"></div>
+    <div class="social">
+      <button id="lbBtn" class="lb-btn" title="Leaderboards" aria-label="Leaderboards"><svg viewBox="0 0 24 24"><path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94A5.005 5.005 0 0 0 11 18.9V21H7v2h10v-2h-4v-2.1a5.005 5.005 0 0 0 3.61-3.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z"/></svg><span>Leaderboards</span></button>
+      <a id="socDiscord" title="Discord" aria-label="Discord" href="https://discord.gg/robostem" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/></svg></a>
+      <a id="socYoutube" title="YouTube" aria-label="YouTube" href="https://www.youtube.com/@thecappedpin" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg></a>
+      <a id="socWeb" title="Website" aria-label="Website" href="https://robostem.org" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg></a>
+    </div>
+    <button id="profileTab" class="profile-tab hidden" title="Profile" aria-label="Profile"><span id="profileTabAv" class="pf-initial"></span></button>
+    <div class="menu-list">
+      <button class="item" id="homePlay">Singleplayer</button>
+      <button class="item" id="homeMultiplayer">Multiplayer</button>
+      <button class="item" id="homeGarage">Garage</button>
+      <button class="item" id="homeGames">Games</button>
+      <button class="item" id="homeSettings">Settings</button>
+    </div>
+    <div class="online-count" id="homeOnline"></div>
+    <div class="version" id="homeVersion">v0.3</div>
+  </div>
+
+  <!-- PROFILE: account, stats, activity graph, friends (layered over home) -->
+  <div id="profileScreen" class="overlay hidden">
+    <div class="profile-card">
+      <button class="pf-close" id="profileClose" aria-label="Close">×</button>
+
+      <!-- logged-out -->
+      <div class="pf-login" id="profileLogin">
+        <h2 style="font-size:28px;font-weight:700;margin-bottom:6px;">Sign in</h2>
+        <p>Log in with Discord to play multiplayer, track your record, and add friends.</p>
+        <button class="btn discord" id="profileLoginBtn">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/></svg>
+          Continue with Discord
+        </button>
+        <p style="font-size:12px;opacity:0.6;margin-top:12px;line-height:1.5;">You must be 13 or older to sign in. By continuing you agree to our
+          <a href="/terms" target="_blank" rel="noopener" style="text-decoration:underline;color:inherit;">Terms</a> and
+          <a href="/privacy" target="_blank" rel="noopener" style="text-decoration:underline;color:inherit;">Privacy Policy</a>.</p>
+      </div>
+
+      <!-- logged-in -->
+      <div id="profileBody" style="display:none;">
+        <button class="linkbtn pf-logout" id="pfLogout">Log out</button>
+        <div class="pf-head">
+          <div class="pf-avatar" id="pfAvatar"></div>
+          <div class="pf-headtext">
+            <div class="pf-name"><span id="pfName">—</span><button class="linkbtn" id="pfEditToggle">Edit</button></div>
+            <div class="pf-handle" id="pfSub"></div>
+          </div>
+        </div>
+
+        <div class="pf-edit" id="pfEdit">
+          <div class="erow">
+            <label for="pfUsername">Username</label>
+            <input id="pfUsername" type="text" maxlength="24" autocomplete="off" spellcheck="false" placeholder="username" />
+            <button class="btn ghost" id="pfSaveName">Save</button>
+          </div>
+          <div class="pf-note" id="pfNameNote"></div>
+          <div class="erow">
+            <label for="pfAvatarUrl">Avatar URL</label>
+            <input id="pfAvatarUrl" type="url" autocomplete="off" spellcheck="false" placeholder="https://…/image.png" />
+            <button class="btn ghost" id="pfSaveAvatar">Save</button>
+            <button class="btn ghost" id="pfRemoveAvatar">Remove</button>
+          </div>
+          <div class="pf-note" id="pfAvatarNote"></div>
+        </div>
+
+        <div class="pf-statbar">
+          <div class="pf-stat"><div class="n" id="pfHighScore">0</div><div class="l">High Score</div></div>
+          <div class="pf-stat"><div class="n" id="pfAvgScore">0</div><div class="l">Avg Score</div></div>
+          <div class="pf-stat"><div class="n" id="pfWinrate">0%</div><div class="l">Winrate</div></div>
+          <div class="pf-stat"><div class="n" id="pfCurStreak">0</div><div class="l">Current Streak</div></div>
+          <div class="pf-stat"><div class="n" id="pfLongStreak">0</div><div class="l">Longest Streak</div></div>
+        </div>
+
+        <div class="pf-section-title">Match Activity</div>
+        <div class="contrib-wrap">
+          <div class="contrib" id="pfContrib"></div>
+          <div class="contrib-months" id="pfMonths"></div>
+        </div>
+        <div class="contrib-legend">Less
+          <span class="sq"></span><span class="sq l1"></span><span class="sq l2"></span>
+          <span class="sq l3"></span><span class="sq l4"></span> More</div>
+
+        <div class="pf-cols">
+          <div class="pf-insights">
+            <div class="pf-section-title">Activity insights</div>
+            <div class="pf-igrid">
+              <div class="pf-irow"><span>Skills Avg</span><b id="pfSkillsAvg">0</b></div>
+              <div class="pf-irow"><span>Skills High</span><b id="pfSkillsHigh">0</b></div>
+              <div class="pf-irow"><span>Skills Low</span><b id="pfSkillsLow">0</b></div>
+              <div class="pf-irow"><span>Most used mode</span><b id="pfMostMode">—</b></div>
+            </div>
+          </div>
+
+          <div class="pf-friends">
+            <div class="pf-section-title">Friends</div>
+            <div class="tabs">
+              <button data-tab="all" class="sel" id="pfTabAll">All</button>
+              <button data-tab="online" id="pfTabOnline">Online</button>
+            </div>
+            <div class="pf-addfriend">
+              <input id="pfAddFriend" type="text" name="friend-username" maxlength="24" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-1p-ignore data-lpignore="true" data-bwignore data-form-type="other" placeholder="Add friend by Discord username" />
+              <button class="btn ghost" id="pfAddFriendBtn">Add</button>
+            </div>
+            <div class="pf-note" id="pfFriendNote"></div>
+            <div id="pfFriendList"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIGN IN: shown instead of the lobby when not logged in -->
+  <div id="signinScreen" class="overlay hidden">
+    <button class="lobby-back signin-back" id="signinBack">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6l6 6"/></svg>
+      Back
+    </button>
+    <div class="signin-box">
+      <h2>Sign in to play multiplayer</h2>
+      <button class="btn discord" id="signinDiscord">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/></svg>
+        Sign in with Discord
+      </button>
+      <p style="font-size:12px;opacity:0.6;margin-top:12px;line-height:1.5;">You must be 13 or older to sign in. By continuing you agree to our
+        <a href="/terms" target="_blank" rel="noopener" style="text-decoration:underline;color:inherit;">Terms</a> and
+        <a href="/privacy" target="_blank" rel="noopener" style="text-decoration:underline;color:inherit;">Privacy Policy</a>.</p>
+    </div>
+  </div>
+
+  <!-- PLAY: mode selection -->
+  <div id="playMenu" class="overlay menu hidden">
+    <div class="home-logo"></div>
+    <div class="menu-list">
+      <button class="item" id="modePractice">Practice<small>Unlimited time</small></button>
+      <button class="item" id="modeSkills">Skills<small>1 minute</small></button>
+      <button class="item" id="modeMatch">Match<small>2 minutes</small></button>
+      <button class="item back" id="playBack">‹ Back</button>
+    </div>
+    <div class="version">v0.3</div>
+  </div>
+
+  <!-- GAMES: scrollable game selection -->
+  <div id="gamesScreen" class="overlay hidden">
+    <div class="games-panel">
+      <button class="games-back" id="gamesBack">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6l6 6"/></svg>
+        Back
+      </button>
+      <div class="games-grid">
+        <div class="game-card" id="gameCardOverride">
+          <span class="game-badge" id="gameBadgeOverride">Current</span>
+          <div class="game-name">Override</div>
+          <div class="game-sub">VEX V5 2026–27</div>
+        </div>
+        <div class="game-card" id="gameCardLevelUp" style="background-image:url('/games-levelup-card.png');background-size:cover;background-position:center">
+          <span class="game-badge" id="gameBadgeLevelUp" hidden>Current</span>
+          <div class="game-name">Level Up</div>
+          <div class="game-sub">VEX IQ 2026–27</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ONLINE LOBBY: room create/join/spectate -->
+  <div id="lobbyScreen" class="overlay hidden">
+    <div class="lobby-panel">
+      <div class="lobby-left">
+        <button class="lobby-back" id="lobbyBack">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6l6 6"/></svg>
+          Back
+        </button>
+        <h2>Online Rooms</h2>
+        <div class="lobby-actions">
+          <button class="btn" id="lobbyCreate">Create Room</button>
+          <div class="join-row">
+            <input id="lobbyJoinCode" type="text" name="invite-code" inputmode="text" maxlength="5" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" data-1p-ignore data-lpignore="true" data-bwignore data-form-type="other" placeholder="Invite Code" />
+            <button class="btn ghost" id="lobbyJoin">Join</button>
+            <button class="btn ghost" id="lobbySpectate">Watch</button>
+          </div>
+        </div>
+        <div class="lobby-status" id="lobbyStatus"></div>
+        <div class="lobby-section">
+          <div class="lobby-section-title">Recently Joined</div>
+          <div class="room-empty">No recent rooms</div>
+        </div>
+      </div>
+      <div class="lobby-main">
+        <div class="lobby-head">
+          <div class="lobby-section-title">Public Rooms</div>
+          <button class="linkbtn" id="lobbyRefresh" type="button">Refresh</button>
+        </div>
+        <div class="room-list" id="roomList">
+          <div class="room-empty">No rooms yet</div>
+        </div>
+        <div class="lobby-divider"></div>
+        <div class="lobby-section">
+          <div class="lobby-section-title">Private Rooms</div>
+          <div class="room-empty">Discord invites will appear here</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ONLINE ROOM: settings + roster (host configures before Start) -->
+  <div id="roomScreen" class="overlay hidden">
+    <div class="lobby-panel room-panel">
+      <div class="lobby-left room-left">
+        <button class="lobby-back" id="roomBack">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6l6 6"/></svg>
+          Back
+        </button>
+        <h2>Room</h2>
+        <div class="room-settings">
+          <div class="rrow">
+            <label>Real Auton</label>
+            <div class="seg" id="roomAutonSeg">
+              <button data-v="off">Off</button>
+              <button data-v="on">On</button>
+            </div>
+          </div>
+          <div class="rrow">
+            <label>My auton routine</label>
+            <button class="mc-customize" id="roomEditAuton">Edit</button>
+          </div>
+          <div class="rrow">
+            <label>Visibility</label>
+            <div class="seg" id="roomVisSeg">
+              <button data-v="private">Private</button>
+              <button data-v="public">Public</button>
+            </div>
+          </div>
+          <div class="rrow">
+            <label>Mid-match joins</label>
+            <div class="seg" id="roomMidJoinSeg">
+              <button data-v="allow">Allow</button>
+              <button data-v="disallow">Disallow</button>
+            </div>
+          </div>
+          <div class="rrow" id="roomBotChoiceRow">
+            <label>Bot choice</label>
+            <div class="seg" id="roomBotLockSeg">
+              <button data-v="free">Anyone</button>
+              <button data-v="locked">Locked</button>
+            </div>
+          </div>
+          <div class="rrow rrow-stack">
+            <label id="roomRobotLabel">My robot</label>
+            <div id="roomRobotCardsMount"></div>
+          </div>
+        </div>
+        <div class="room-foot">
+          <button class="btn" id="roomStart">Start Match</button>
+          <div class="room-wait" id="roomWait" hidden>Waiting for the host to start…</div>
+        </div>
+      </div>
+      <div class="lobby-main room-main">
+        <div class="room-codecard">
+          <div>
+            <div class="room-code-label">Invite code</div>
+            <div class="room-code" id="roomCode">—</div>
+          </div>
+          <button class="btn ghost room-copy" id="roomCopy">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            Copy link
+          </button>
+        </div>
+        <div class="room-section">
+          <div class="lobby-section-title">Competitors <span id="roomPlayerCount"></span></div>
+          <div class="team-heads"><div class="team-head red">Red</div><div class="team-head blue">Blue</div></div>
+          <div class="team-grid" id="roomPlayers"></div>
+        </div>
+        <div class="room-section">
+          <div class="lobby-section-title">Spectators <span id="roomSpecCount"></span></div>
+          <div class="spec-zone" id="roomSpectators"></div>
+        </div>
+        <div class="room-section" id="roomInviteSection" hidden>
+          <div class="lobby-section-title">Invite friends</div>
+          <div class="invite-list" id="roomInviteList"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LEADERBOARD: skills ranks, paged 10 at a time (layers over the home menu) -->
+  <div id="leaderboardScreen" class="overlay hidden">
+    <div class="lobby-panel lb-panel">
+      <div class="lb-head">
+        <button class="lobby-back" id="lbBack">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+          Back
+        </button>
+        <button class="btn ghost lb-copy" id="lbCopy" title="Copy a link to this leaderboard"><svg viewBox="0 0 24 24"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg><span id="lbCopyLabel">Copy link</span></button>
+      </div>
+      <h2>Skills Leaderboard</h2>
+      <div class="lb-gamesel">
+        <button id="lbGameOverride" class="on">Override</button>
+        <button id="lbGameLevelup">Level Up</button>
+      </div>
+      <div class="lb-rows" id="lbRows"></div>
+      <div class="lb-pager">
+        <button class="btn ghost" id="lbPrev">Prev</button>
+        <span id="lbPageLabel">—</span>
+        <button class="btn ghost" id="lbNext">Next</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SETTINGS: full page (drivebase settings live here) -->
+  <div id="settingsPage" class="overlay hidden">
+    <div class="page settings-card">
+      <div class="settings-side">
+        <h1>Settings</h1>
+        <div class="settings-tabs" role="tablist">
+          <button class="stab sel" data-tab="general">General</button>
+          <button class="stab" data-tab="controls">Controls</button>
+          <button class="stab" data-tab="loads">Match Loads</button>
+          <button class="stab" data-tab="replays">Replays</button>
+        </div>
+        <button class="btn ghost" id="settingsBack">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6l6 6"/></svg>
+          Back
+        </button>
+        <p style="font-size:12px;opacity:0.5;margin-top:12px;line-height:1.6;">
+          <a href="/terms" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;">Terms</a>
+          &nbsp;·&nbsp;
+          <a href="/privacy" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;">Privacy</a>
+        </p>
+      </div>
+
+      <div class="settings-content">
+
+      <!-- GENERAL -->
+      <div class="settings settings-panel" data-panel="general">
+        <div class="srow graphicsRow">
+          <div class="graphicsHead">
+            <label>Graphics</label>
+            <button class="linkbtn" id="autoQuality" type="button">Pick for me</button>
+          </div>
+          <div class="graphicsChoice">
+            <div class="seg" id="qualitySeg">
+              <button data-quality="quality">Quality</button>
+              <button data-quality="performance" class="sel">Performance</button>
+              <button data-quality="ultra">Ultra Performance</button>
+            </div>
+            <div class="pickStatus" id="autoQualityStatus"></div>
+          </div>
+        </div>
+        <div class="srow">
+          <label>Alliance <span class="tag-sp">(Singleplayer)</span></label>
+          <div class="seg" id="allianceSeg">
+            <button data-alliance="red" class="sel">Red</button>
+            <button data-alliance="blue">Blue</button>
+          </div>
+        </div>
+        <div class="srow">
+          <label>Match auton</label>
+          <div class="mc-preload">
+            <div class="seg" id="autonSeg">
+              <button data-v="off" class="sel">Off</button>
+              <button data-v="on">On</button>
+            </div>
+            <button class="mc-customize" id="editAuton">Edit</button>
+          </div>
+        </div>
+        <div class="srow">
+          <label>Sound <span class="tag-sp">(M to mute)</span></label>
+          <div class="seg" id="soundSeg">
+            <button data-v="on" class="sel">On</button>
+            <button data-v="off">Off</button>
+          </div>
+        </div>
+        <div class="srow">
+          <label>Camera mode <span class="tag-sp">(free-fly &amp; lock before a run)</span></label>
+          <div class="seg" id="cameraModeSeg">
+            <button data-v="off" class="sel">Off</button>
+            <button data-v="on">On</button>
+          </div>
+        </div>
+        <div class="srow">
+          <label>Camera angle</label>
+          <div class="sliderwrap">
+            <input type="range" id="camAngle" min="-50" max="45" step="1" value="-20" />
+            <span id="camAngleVal">-20°</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- CONTROLS -->
+      <div class="settings settings-panel hidden" data-panel="controls">
+        <div class="srow">
+          <label>Input</label>
+          <div class="seg" id="inputTypeSeg">
+            <button data-input="kbm" class="sel">Keyboard &amp; Mouse</button>
+            <button data-input="gamepad">Controller</button>
+          </div>
+        </div>
+        <div id="kbmControls">
+          <div class="srow kb-robot-row" id="ctrlRobotRow" style="display:none">
+            <label>Robot</label>
+            <div class="seg" id="ctrlRobotSeg"></div>
+          </div>
+          <div class="srow kb-preset-row">
+            <label>Preset</label>
+            <div class="seg" id="ctrlModeSeg">
+              <button data-scheme="mouse" class="sel">Mouse</button>
+              <button data-scheme="keyboard">Keyboard</button>
+              <button data-scheme="custom" id="presetCustomBtn" disabled style="display:none">Custom</button>
+            </div>
+          </div>
+          <div class="kb-note" id="kbNote"></div>
+          <div id="keybindList"></div>
+          <div class="srow">
+            <label>Lift direction</label>
+            <div class="seg" id="liftDirSeg">
+              <button data-inv="0" class="sel">Normal</button>
+              <button data-inv="1">Inverted</button>
+            </div>
+          </div>
+        </div>
+        <div id="gamepadControls" style="display:none">
+          <div id="gamepadSection"></div>
+        </div>
+      </div>
+
+      <!-- MATCH LOADS -->
+      <div class="settings settings-panel hidden" data-panel="loads">
+        <div class="srow">
+          <label>Orientation in the claw</label>
+          <div class="loadPreviewWrap">
+            <canvas id="loadPreviewCanvas"></canvas>
+          </div>
+        </div>
+        <div class="srow loadFlipRow">
+          <button class="btn ghost" id="flipCupBtn">Flip cup</button>
+          <button class="btn ghost" id="flipPinBtn">Flip pin</button>
+        </div>
+        <div class="srow">
+          <label class="loadLinkLabel">
+            <input type="checkbox" id="loadLinkChk" checked />
+            Use the same orientation for Match &amp; Skills
+          </label>
+        </div>
+        <div class="srow loadModeRow" id="loadModeRow" style="display:none">
+          <label>Editing</label>
+          <div class="seg" id="loadModeSeg">
+            <button data-mode="match" class="sel">Match</button>
+            <button data-mode="skills">Skills</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- REPLAYS -->
+      <div class="settings settings-panel hidden" data-panel="replays">
+        <div class="srow replays-head">
+          <label>Saved replays <span class="tag-sp" id="replayUsage"></span></label>
+          <button class="btn ghost" id="replayImport">Import…</button>
+          <input type="file" id="replayImportInput" accept=".simreplay" style="display:none" />
+        </div>
+        <div id="replayList" class="replay-list"></div>
+      </div>
+
+      </div><!-- /.settings-content -->
+    </div>
+  </div>
+
+  <!-- GARAGE: standalone robot customization (its own home tab, not part of Settings) -->
+  <div id="garageScreen" class="overlay hidden">
+    <div class="page garage-card">
+      <div class="garage-head">
+        <button class="btn ghost" id="garageBack">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6l6 6"/></svg>
+          Back
+        </button>
+        <h1>Garage</h1>
+      </div>
+      <div class="settings-content">
+        <div class="settings">
+          <div class="garage-preview-wrap">
+            <canvas id="garageCanvas"></canvas>
+            <div class="garage-hint">drag to spin</div>
+          </div>
+          <div class="srow" id="robotPickerRow" style="display:none">
+            <label>Robot</label>
+            <div class="seg" id="robotPicker"></div>
+          </div>
+          <div id="colorSlots"></div>
+          <div class="swatch-row">
+            <label>Accessory</label>
+            <div class="accessory-grid" id="accessoryPicker"></div>
+          </div>
+          <div class="srow">
+            <label>Wheel diameter</label>
+            <div class="seg" id="wheelSeg">
+              <button data-d="2.75">2.75"</button>
+              <button data-d="3.25" class="sel">3.25"</button>
+              <button data-d="4">4"</button>
+            </div>
+          </div>
+          <div class="srow">
+            <label>Drive RPM</label>
+            <div class="sliderwrap">
+              <input type="range" id="rpmSlider" min="1" max="600" step="1" value="360" />
+              <span id="rpmVal">360</span>
+            </div>
+          </div>
+          <div class="srow speed"><label>Top speed</label><span id="speedVal">—</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MATCH CONFIG: pre-run setup with a live robot preview + options panel -->
+  <div id="matchConfigScreen" class="overlay hidden">
+    <button class="backpill" id="matchConfigBack">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6l6 6"/></svg>
+      Back
+    </button>
+    <div id="mcRobotChooser" class="robot-chooser hidden">
+      <div class="robot-chooser__title">Choose robot</div>
+      <div id="mcRobotCardsMount"></div>
+    </div>
+    <div class="match-panel">
+      <h2 id="matchConfigTitle">Match Settings</h2>
+      <div class="mrows">
+        <div class="mrow">
+          <label>Alliance</label>
+          <div class="seg" id="mcAllianceSeg">
+            <button data-alliance="red">Red</button>
+            <button data-alliance="blue">Blue</button>
+          </div>
+        </div>
+        <div class="mrow">
+          <label>Camera</label>
+          <div class="seg" id="mcCameraSeg">
+            <button class="sel" disabled>Follow</button>
+          </div>
+        </div>
+        <div class="mrow">
+          <label>Wheel Size</label>
+          <div class="seg" id="mcWheelSeg">
+            <button data-d="2.75">2.75"</button>
+            <button data-d="3.25">3.25"</button>
+            <button data-d="4">4"</button>
+          </div>
+        </div>
+        <div class="mrow">
+          <label>Drive RPM</label>
+          <div class="sliderwrap">
+            <input type="range" id="mcRpm" min="1" max="600" step="1" value="360" />
+            <span id="mcRpmVal">360</span>
+          </div>
+        </div>
+        <div class="mrow">
+          <label>Control</label>
+          <div class="seg" id="mcCtrlSeg">
+            <button data-scheme="mouse">Mouse</button>
+            <button data-scheme="keyboard">Keyboard</button>
+          </div>
+        </div>
+        <div class="mrow">
+          <label>Starting Position</label>
+          <button class="mc-customize" id="openStartPos">Customize</button>
+        </div>
+        <div class="mrow">
+          <label>Preload</label>
+          <div class="mc-preload">
+            <span class="mc-pre-state" id="mcPreloadState">Red up</span>
+            <button class="mc-customize" id="mcFlipPreload">Flip ⟳</button>
+          </div>
+        </div>
+        <div class="mrow" id="mcAutonRow">
+          <label>Autonomous</label>
+          <div class="mc-preload">
+            <div class="seg" id="mcAutonSeg">
+              <button data-v="off">Off</button>
+              <button data-v="on">On</button>
+            </div>
+            <button class="mc-customize" id="mcEditAuton">Edit</button>
+          </div>
+        </div>
+        <div class="mrow">
+          <label>Record replay</label>
+          <div class="seg" id="mcReplaySeg">
+            <button data-v="off">Off</button>
+            <button data-v="on">On</button>
+          </div>
+        </div>
+      </div>
+      <button class="btn mc-start" id="matchConfigStart">Start</button>
+    </div>
+  </div>
+
+  <!-- START POSITION: live top-down birds-eye editor (field left, panel right) -->
+  <div id="startPosScreen" class="overlay hidden">
+    <button class="backpill hidden" id="spBack">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6l6 6"/></svg>
+      Back
+    </button>
+    <canvas id="startPosCanvas"></canvas>
+    <div class="match-panel" id="spPanel">
+      <h2>Starting Position</h2>
+      <p class="sp-instr">Drag the robot along a wall to move it.<br>Drag the handle to rotate it.</p>
+      <div class="sp-presets-lbl" id="spPresetsLbl">Presets</div>
+      <div class="sp-presets" id="spPresets">
+        <button class="sp-preset" data-team="red1">Red 1</button>
+        <button class="sp-preset" data-team="red2">Red 2</button>
+        <button class="sp-preset" data-team="blue1">Blue 1</button>
+        <button class="sp-preset" data-team="blue2">Blue 2</button>
+      </div>
+      <div class="sp-btncol">
+        <button class="btn" id="spSaveOnce">Save for this time</button>
+        <button class="btn ghost" id="spSaveAlways">Save for always</button>
+        <button class="btn ghost" id="spReset">Reset to default</button>
+        <button class="btn ghost" id="spCancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULTS: shown when a timed run ends -->
+  <div id="resultsScreen" class="overlay hidden">
+    <div class="card">
+      <h1 id="resultsTitle">Match Complete</h1>
+      <div class="sub">Final score</div>
+      <div class="score">
+        <div class="s red"><span id="resRed">0</span></div>
+        <div class="s blue"><span id="resBlue">0</span></div>
+      </div>
+      <div class="results-roster" id="resultsRoster"></div>
+      <button class="btn" id="resultsPlayAgain" hidden>Play Again</button>
+      <button class="btn" id="resultsMenu">Main Menu</button>
+    </div>
+  </div>
+
+  <!-- PAUSE: in-run overlay -->
+  <div id="pauseScreen" class="overlay hidden">
+    <div class="card">
+      <h1>Paused</h1>
+      <div class="sub">Run in progress</div>
+      <div class="btncol">
+        <!-- icons: Tabler Icons (MIT) -->
+        <!-- camera-mode only: shown during the pre-roll (free-fly) phase -->
+        <button class="btn ghost hidden" id="pauseLockCam">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 11m0 2a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v5a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2z"/><path d="M8 11v-4a4 4 0 1 1 8 0v4"/></svg>
+          Lock Camera
+        </button>
+        <button class="btn hidden" id="pauseStartMatch">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11 -7z"/></svg>
+          Start Match
+        </button>
+        <button class="btn" id="resumeBtn">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11 -7z"/></svg>
+          Resume
+        </button>
+        <button class="btn ghost" id="restartBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4"/><path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4"/></svg>
+          Restart
+        </button>
+        <button class="btn ghost" id="pauseSettings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065z"/><path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/></svg>
+          Settings
+        </button>
+        <button class="btn ghost" id="pauseMenu">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 8v-2a2 2 0 0 0 -2 -2h-7a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h7a2 2 0 0 0 2 -2v-2"/><path d="M9 12h12l-3 -3"/><path d="M18 15l3 -3"/></svg>
+          Exit to Menu
+        </button>
+      </div>
+      <div class="hint">Esc resume · Tab restart · [ toggles controls</div>
+    </div>
+  </div>
+
+  <!-- REPLAY PLAYBACK: Back pill + bottom transport bar (shown only while watching a replay) -->
+  <button class="backpill replay-back hidden" id="replayBack">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6l6 6"/></svg>
+    Back
+  </button>
+  <div id="replayBar" class="replay-bar hidden">
+    <button class="replay-btn replay-play" id="replayPlay" title="Pause">❚❚</button>
+    <button class="replay-btn" id="replayBack5" title="Back 5s">« 5s</button>
+    <button class="replay-btn" id="replayFwd5" title="Forward 5s">5s »</button>
+    <input type="range" class="replay-seek" id="replaySeek" min="0" max="1000" value="0" />
+    <span class="replay-time" id="replayTime">0:00 / 0:00</span>
+    <div class="seg replay-speed" id="replaySpeedSeg">
+      <button data-s="0.25">0.25×</button>
+      <button data-s="0.5">0.5×</button>
+      <button data-s="1" class="sel">1×</button>
+      <button data-s="2">2×</button>
+      <button data-s="4">4×</button>
+    </div>
+    <span class="replay-view" id="replayView">Spectator · P</span>
+  </div>
+
+<!-- Cloudflare Pages Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "3568a140663a48999a9773ad5299bdcb"}'></script><!-- Cloudflare Pages Analytics --></body>
+</html>
