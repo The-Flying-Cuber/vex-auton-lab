@@ -15,6 +15,7 @@ Added controls in **Auton Coder**:
 - Runs open from a raised view behind the red side. The surrounding shed is removed.
 - Choose **Locked view** to keep the mouse free, or **Free cam** to fly around. Change it during a run with the view button or **F**.
 - Each robot tab has **Preload pin: Red up / Yellow up** and **Match-load pin: Color up / Yellow up** controls. These settings are saved independently for each robot and field. Color up uses the red or blue end of the supplied pin; cup orientation is preserved.
+- **REV** follows the waypoint with the rear of the robot leading. During programmed runs, automatic goal alignment is reserved for **SCORE** blocks so nearby goals do not pull a reverse drive off course.
 
 Open **Auton Coder** from the main menu. Pick the field, choose which robot to edit, save its routine, then press **Run**. Routines and settings are stored separately in each visitor's browser; they are not shared automatically between visitors. The editor runs simulator commands, not uploaded PROS or VEXcode C++.
 
