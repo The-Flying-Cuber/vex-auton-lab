@@ -23,6 +23,7 @@ patch('eI.update(wA);{const sA=!ig', 'eI.update(wA);lab.updateProgress();{const 
 patch('E=Math.min(E+MA,B*2);let GI=0;for(;E>=B&&GI<2;)', 'E=Math.min(E+MA,B*(lab.testing?8:2));let GI=0;for(;E>=B&&GI<(lab.testing?8:2);)');
 patch('GI===2&&E>=B&&(E=0,Rg.snapRenderState(Kg.all))', 'GI===(lab.testing?8:2)&&E>=B&&(E=0,Rg.snapRenderState(Kg.all))');
 patch('UI.tick(MA),UI.tickSettle(MA)', 'UI.tick(lab.testing?GI*B:MA),UI.tickSettle(lab.testing?GI*B:MA)');
+patch('eI.showToast(sA?`DRIVER · Auton bonus ${nI}`:"DRIVER CONTROL")', 'eI.showToast(lab.testing?"AUTON COMPLETE":sA?`DRIVER · Auton bonus ${nI}`:"DRIVER CONTROL")');
 patch('ox();\n', await read('src/auton-lab.js'));
 // Resolve resources relative to the page so /<repository>/ works on Pages.
 js=js.replaceAll('"/models/','"./models/').replaceAll('"/sounds/','"./sounds/').replaceAll('"/asset-manifest.json"','"./asset-manifest.json"');
