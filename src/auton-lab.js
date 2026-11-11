@@ -8,13 +8,14 @@ const lab = {
   camera: 'locked',
   testing: false,
   config: null,
+  sharedSkills: null,
   slots: [0, 1],
   get duration() { return this.mode === 'skills' ? 60 : 15; },
   defaults() {
     const starts = qc();
     const skillsStart = wf(lf());
     const pins=mode=>({preloadFlipped:false,matchLoadPinFlipped:!!M.matchLoad.orientation[mode].pinFlipped});
-    return {
+    const defaults={
       mode: 'match', run: 'both', active: 0, camera: 'locked',
       routines: { match: ['default', 'lab-match-2'], skills: ['lab-skills-1', 'lab-skills-2'] },
       pinOrientations:{match:[pins('match'),pins('match')],skills:[pins('skills'),pins('skills')]},
@@ -23,6 +24,30 @@ const lab = {
         skills: [{ ...skillsStart }, { ...starts.red1 }]
       }
     };
+    if(this.sharedSkills) {
+      defaults.mode='skills';
+      for(const [index,robot] of this.sharedSkills.robots.entries()){
+        defaults.poses.skills[index]={...robot.pose};
+        defaults.pinOrientations.skills[index]={...robot.pins};
+      }
+    }
+    return defaults;
+  },
+  async initialize() {
+    try {
+      this.sharedSkills=await labReadSkillsLink(location.hash,Hn());
+      if(this.sharedSkills){
+        const suffix='.skills.'+this.sharedSkills.id;
+        this.key+=suffix;
+        $d+=suffix;
+      }
+    } catch(error) {
+      this.invalidSkillsLink=true;
+      console.warn('Could not load linked Skills routine',error);
+    }
+    this.load();
+    await ox();
+    this.afterBoot();
   },
   load() {
     const defaults = this.defaults();
@@ -54,7 +79,17 @@ const lab = {
     this.run = this.config.run;
     this.active = this.config.active;
     this.camera = this.config.camera;
-    const isolated=labIsolateRoutines(Zy(),this.config.routines,ZL);
+    const library=Zy();
+    if(this.sharedSkills&&!stored) {
+      for(const [index,robot] of this.sharedSkills.robots.entries()) {
+        const id=defaults.routines.skills[index];
+        if(!library.autos.some(auto=>auto.id===id)) {
+          library.autos.push({id,name:`${this.sharedSkills.name} · Robot ${index+1}`,
+            steps:robot.steps,labOwner:labRoutineOwner('skills',index)});
+        }
+      }
+    }
+    const isolated=labIsolateRoutines(library,this.config.routines,ZL);
     this.config.routines=isolated.routines;
     Wa(isolated.store);
     this.save();
@@ -612,7 +647,8 @@ const lab = {
     }
     this.selectRoutine();
     // A direct link opens the same editor; all original singleplayer menus stay.
-    if (new URLSearchParams(location.search).get('auton')==='1') GB.open();
+    if (this.sharedSkills||new URLSearchParams(location.search).get('auton')==='1') GB.open();
+    if(this.invalidSkillsLink)eI.showToast('Could not load linked Skills routine');
   }
 };
 
@@ -645,7 +681,6 @@ kl=id=>lab.openRoutine(id);
 kD=()=>lab.saveEditedRoutine();
 Bp=()=>lab.newRoutine();
 Ps=()=>lab.renderRobotTabs();
-lab.load();
 M.scoring.robotAlliance='red';
 M.arena.warehouse.enabled=false;
 vg='override';
@@ -674,7 +709,7 @@ GB.open=function(onClose){
 const labOriginalTT=tt;
 tt=function(){lab.testing=false;lab.restoreCameraFov();document.getElementById('lab-runbar')?.setAttribute('hidden','');labOriginalTT();};
 window.autonLab=lab;
-ox().then(()=>lab.afterBoot()).catch(error=>{
+lab.initialize().catch(error=>{
   console.error('Auton Lab failed to start',error);
   const loading=document.getElementById('loadingScreen');
   if(loading){loading.classList.remove('hidden');loading.textContent='Could not load the simulator. Reload the page to retry.';}
