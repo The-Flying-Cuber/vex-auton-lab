@@ -58,6 +58,7 @@ const labCurves={
     const end=tI('div','lab-curve-row');
     end.append(this.numeric(step,index,'x','End X'),this.numeric(step,index,'z','End Z'));
     const reverse=tI('button','auton-revmini'+(step.rev?' rev':''),step.rev?'REV':'FWD');
+    reverse.title=`REV uses ${LAB_AUTON_REVERSE_SCALE * 100}% of FWD speed at the same setting.`;
     reverse.onclick=()=>{vi();step.rev=!step.rev;rC();};
     const line=tI('button','auton-revmini','LINE');line.title='Convert this curve to a straight DRIVE block';line.onclick=()=>this.convert(index,false);
     end.append(reverse,line);fields.append(end);
@@ -196,6 +197,8 @@ gm=function(step,index) {
   if(step.t==='curveTo')return labCurves.fields(step,index);
   const fields=labCurveOriginalFields(step,index);
   if(step.t==='driveTo') {
+    const direction=fields.querySelector('button.auton-revmini');
+    if(direction) direction.title=`REV uses ${LAB_AUTON_REVERSE_SCALE * 100}% of FWD speed.`;
     const curve=tI('button','auton-revmini','CURVE');curve.title='Convert this DRIVE block to an editable Bézier curve';curve.onclick=()=>labCurves.convert(index,true);fields.append(curve);
   }
   return fields;

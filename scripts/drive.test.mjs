@@ -35,6 +35,7 @@ const context=vm.createContext({
 });
 const {Runner,Dummy,Drivetrain,Aligner,Robot}=vm.runInContext(
   ['PL','Xn','Hd','gL','Vn'].map(classSource).join('\n')+
+  js.slice(js.indexOf('// AUTON_LAB_CURVE_RUNNER_BEGIN'),js.indexOf('// AUTON_LAB_CURVE_RUNNER_END'))+
   ';({Runner:PL,Dummy:Xn,Drivetrain:Hd,Aligner:gL,Robot:Vn})',context);
 
 function instance({reverse=false,goals=[],start={x:0,z:.8},target={x:0,z:-.6},yaw=reverse?0:Math.PI,carrying=true}={}) {

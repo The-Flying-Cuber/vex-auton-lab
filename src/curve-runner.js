@@ -1,9 +1,20 @@
 // AUTON_LAB_CURVE_RUNNER_BEGIN
 // Pure pursuit geometry follows Coulter's lookahead-circle construction:
 // https://publications.ri.cmu.edu/implementation-of-the-pure-pursuit-path-tracking-algorithm
+const LAB_AUTON_REVERSE_SCALE = .4;
+
+const labOriginalDriveTo = PL.prototype._st_driveTo;
+PL.prototype._st_driveTo = function(step, dt) {
+  labOriginalDriveTo.call(this, step, dt);
+  if (step.rev) {
+    const reversing = this.dummy.input.isDown('KeyS');
+    this.dummy.setThrottle(reversing ? -LAB_AUTON_REVERSE_SCALE : undefined);
+  }
+};
+
 function labCurveTimeout(runner,step) {
   const length=runner._labCurve?.index===runner.i?runner._labCurve.path.length:0;
-  const speed=cG(runner.robot.driveParams??M.drive)*(runner.robot.drivetrain?.speedMult??1)*(step.rev?M.robot.reverseScale:1);
+  const speed=cG(runner.robot.driveParams??M.drive)*(runner.robot.drivetrain?.speedMult??1)*(step.rev?LAB_AUTON_REVERSE_SCALE:1);
   return Math.max(M.auton.driveTimeout,length/Math.max(.04,speed*labCurveOptions(step).speed*.5)+4);
 }
 
@@ -44,7 +55,7 @@ PL.prototype._st_curveTo=function(step,dt) {
   // Corner and endpoint easing is available only when explicitly selected.
   const turnScale=options.adaptive?1/Math.sqrt(1+Math.abs(steering.curvature)*.4):1;
   const endScale=options.adaptive?labCurveClamp(endDistance/Math.max(options.lookahead,.2),.18,1):1;
-  const throttle=options.speed*turnScale*endScale*(step.rev?-M.robot.reverseScale:1);
+  const throttle=options.speed*turnScale*endScale*(step.rev?-LAB_AUTON_REVERSE_SCALE:1);
   this.dummy.setThrottle(throttle);
   this.dummy.setKey('KeyW',!step.rev);this.dummy.setKey('KeyS',!!step.rev);
 };

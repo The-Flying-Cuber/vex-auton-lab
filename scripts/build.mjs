@@ -17,7 +17,13 @@ patch('M.graphics.quality!=="ultra"&&bs&&await g()', 'M.arena.warehouse.enabled&
 patch('const g=i==="match"&&M.controls.matchAuton;', 'const g=(i==="match"||i==="skills")&&M.controls.matchAuton;');
 patch('PH(GH[i],g?M.scoring.autonDuration:0)', 'PH(lab.testing?lab.duration:GH[i],g?(i==="skills"?60:lab.testing?lab.duration:M.scoring.autonDuration):0)');
 patch('const NI=sA=>sA===wA&&UI.inAuton&&wA._autonRunner?(wA._autonRunner.update(B),{input:wA._autonDummy.input,view:wA._autonDummy.view}):sA===wA?{input:ig?t:zg.input,view:SI}:{input:sA._dummy.input,view:sA._dummy.view};', 'const NI=sA=>UI.inAuton&&sA._autonRunner?(sA._autonRunner.update(B),{input:sA._autonDummy.input,view:sA._autonDummy.view}):sA===wA?{input:ig?t:zg.input,view:SI}:{input:sA._dummy.input,view:sA._dummy.view};');
-patch('const g=I.t==="driveTo"?M.auton.driveTimeout:I.t==="score"?M.auton.scoreTimeout:M.auton.stepTimeout;', 'const g=I.t==="wait"||I.t==="intake"?Math.max(M.auton.stepTimeout,(+I.ms||0)/1000+1):I.t==="curveTo"?labCurveTimeout(this,I):I.t==="driveTo"?M.auton.driveTimeout:I.t==="score"?M.auton.scoreTimeout:M.auton.stepTimeout;');
+patch('const g=I.t==="driveTo"?M.auton.driveTimeout:I.t==="score"?M.auton.scoreTimeout:M.auton.stepTimeout;', `
+const g = I.t === "wait" || I.t === "intake" ? Math.max(M.auton.stepTimeout, (+I.ms || 0) / 1000 + 1)
+  : I.t === "curveTo" ? labCurveTimeout(this, I)
+  : I.t === "driveTo" ? M.auton.driveTimeout / (I.rev ? LAB_AUTON_REVERSE_SCALE : 1)
+  : I.t === "score" ? M.auton.scoreTimeout
+  : M.auton.stepTimeout;
+`);
 // The rear goal aligner otherwise fights REV waypoint steering while carrying.
 // Keep goal assistance for SCORE blocks and for ordinary manual driving.
 patch('carrying:r,reversing:c,inAuton:C}', 'carrying:r&&(!C||!this._autonRunner||this._autonRunner.steps[this._autonRunner.i]?.t==="score"),reversing:c,inAuton:C}');

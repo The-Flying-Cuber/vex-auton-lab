@@ -84,8 +84,14 @@ const fullCurve=simulation([{...curve,speed:1}]).finish();
 assert(peak(fullCurve)>=peak(regular)*.98,'A curve at 100% must reach regular DRIVE speed without a hidden bend multiplier');
 const regularReverse=simulation([{t:'driveTo',x:0,z:1.5,rev:true}],{yaw:Math.PI}).finish();
 const fullReverse=simulation([{...curve,speed:1,rev:true}],{yaw:Math.PI}).finish();
-assert(peak(fullReverse)>=peak(regularReverse)*.98,'A reverse curve at 100% must reach regular REV speed');
+const halfForward=simulation([{...curve,speed:.5}]).finish();
+assert(peak(fullReverse)<peak(halfForward),'A full-speed REV curve must be slower than a 50% FWD curve');
+assert(Math.abs(peak(regularReverse)/peak(regular)-.4)<.01,'REV DRIVE must reach 40% of FWD DRIVE speed');
+assert(Math.abs(peak(fullReverse)/peak(regularReverse)-1)<.02,'Full-speed reverse curves must match REV DRIVE speed');
 for(const result of [fullCurve,fullReverse])assert(Math.hypot(result.robot.root.position.x-1,result.robot.root.position.z-1)<.1,'Full-speed curves must still reach their endpoint');
+const longReverse=simulation([{t:'driveTo',x:0,z:1.5,rev:true}],{start:{x:0,z:-1.5},yaw:Math.PI}).finish();
+assert(longReverse.elapsed>4&&Math.abs(longReverse.robot.root.position.z-1.5)<.1,'A long REV DRIVE must reach its waypoint beyond the original timeout');
+assert.equal(longReverse.dummy.input.throttle,undefined,'Finishing a REV DRIVE must clear its throttle override');
 const adaptive=simulation([{...curve,speed:1,adaptive:true}]).finish();
 assert(peak(adaptive)<peak(fullCurve)*.97,'Slowing for bends must be an explicit adaptive-speed option');
 
